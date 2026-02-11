@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CRM Propostas • Pipeline Comercial</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="bg-decoration" aria-hidden="true"></div>
+
+    <header class="hero">
+      <div class="hero-copy">
+        <p class="eyebrow">CRM Comercial</p>
+        <h1>Pipeline de Propostas</h1>
+        <p>
+          Um painel organizado para visualizar empresas que faltam contato, propostas enviadas e respostas recebidas.
+        </p>
+      </div>
+
+      <div class="stats" id="statsCards">
+        <article class="stat stat-pending">
+          <h2 id="statPending">0</h2>
+          <p>Faltam enviar</p>
+        </article>
+        <article class="stat stat-sent">
+          <h2 id="statSent">0</h2>
+          <p>Enviadas</p>
+        </article>
+        <article class="stat stat-answered">
+          <h2 id="statAnswered">0</h2>
+          <p>Respondidas</p>
+        </article>
+      </div>
+    </header>
+
+    <main>
+      <section class="panel form-panel">
+        <h2>Adicionar empresa</h2>
+        <form id="companyForm">
+          <label>
+            Nome da empresa
+            <input type="text" id="name" placeholder="Ex: Tech Soluções" required />
+          </label>
+
+          <label>
+            Contato
+            <input type="text" id="contact" placeholder="Ex: Ana Silva • ana@email.com" />
+          </label>
+
+          <label>
+            Local de envio
+            <select id="channel" required>
+              <option value="nao-enviado">Ainda não enviado</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="email">Email</option>
+              <option value="instagram">Instagram</option>
+            </select>
+          </label>
+
+          <label>
+            Status
+            <select id="status" required>
+              <option value="pendente">Falta enviar</option>
+              <option value="enviada">Proposta enviada</option>
+              <option value="respondida">Empresa respondeu</option>
+            </select>
+          </label>
+
+          <label>
+            Observações
+            <textarea id="notes" rows="3" placeholder="Ex: pediu retorno na próxima semana"></textarea>
+          </label>
+
+          <button type="submit" class="primary-btn">Adicionar ao CRM</button>
+        </form>
+      </section>
+
+      <section class="panel board-panel">
+        <div class="board-header">
+          <h2>Quadro de acompanhamento</h2>
+          <button id="clearAll" type="button" class="ghost">Limpar tudo</button>
+        </div>
+
+        <div class="board-tools">
+          <label>
+            Buscar empresa
+            <input id="searchInput" type="search" placeholder="Digite o nome da empresa" />
+          </label>
+          <label>
+            Canal
+            <select id="channelFilter">
+              <option value="todos">Todos os canais</option>
+              <option value="nao-enviado">Ainda não enviado</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="email">Email</option>
+              <option value="instagram">Instagram</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="board" id="board">
+          <article class="column" data-status="pendente">
+            <header>
+              <h3>Faltam enviar</h3>
+              <span class="counter" id="count-pendente">0</span>
+            </header>
+            <div class="card-list" id="list-pendente"></div>
+          </article>
+
+          <article class="column" data-status="enviada">
+            <header>
+              <h3>Enviadas</h3>
+              <span class="counter" id="count-enviada">0</span>
+            </header>
+            <div class="card-list" id="list-enviada"></div>
+          </article>
+
+          <article class="column" data-status="respondida">
+            <header>
+              <h3>Respondidas</h3>
+              <span class="counter" id="count-respondida">0</span>
+            </header>
+            <div class="card-list" id="list-respondida"></div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <template id="companyCardTemplate">
+      <article class="company-card">
+        <div class="card-top">
+          <h4 class="company-name"></h4>
+          <button type="button" class="delete-btn" title="Remover">✕</button>
+        </div>
+        <p class="company-contact"></p>
+        <p class="company-channel"></p>
+        <p class="company-notes"></p>
+        <div class="card-actions">
+          <label>
+            Mover para
+            <select class="status-select">
+              <option value="pendente">Falta enviar</option>
+              <option value="enviada">Enviada</option>
+              <option value="respondida">Respondida</option>
+            </select>
+          </label>
+          <label>
+            Enviado por
+            <select class="channel-select">
+              <option value="nao-enviado">Ainda não enviado</option>
+              <option value="linkedin">LinkedIn</option>
+              <option value="email">Email</option>
+              <option value="instagram">Instagram</option>
+            </select>
+          </label>
+        </div>
+      </article>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
