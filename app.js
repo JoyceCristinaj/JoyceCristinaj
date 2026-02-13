@@ -4,7 +4,7 @@ const NUCLEI = ["Campo Grande", "Jacarezinho", "Realengo", "Santa Cruz"];
 
 const CREDENTIALS = {
   professor: { username: "professor", password: "prof123" },
-  admin: { username: "gestao", password: "gestao123" },
+  admin: { username: "gestao", password: "iin@2026" },
 };
 
 const state = {
@@ -162,7 +162,7 @@ function handleLogin(event) {
   if (valid && username === valid.username && password === valid.password) {
     state.activeRole = role;
     localStorage.setItem(SESSION_KEY, role);
-    ui.accessStatus.textContent = `Login realizado com sucesso na área ${role === "admin" ? "Gestão" : "Professor"}.`;
+    ui.accessStatus.textContent = `Login realizado com sucesso na área ${role === "admin" ? "Gestão" : "Professor"}. Dados de presença ficam sincronizados entre Professor e Gestão.`;
     ui.loginForm.reset();
     renderAccess();
     return;
