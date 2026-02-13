@@ -1,110 +1,114 @@
-const STORAGE_KEY = "crm-propostas-v1";
+const STORAGE_KEY = "instituto-irmaos-nogueira-v1";
+const NUCLEI = ["Campo Grande", "Jacarezinho", "Realengo", "Santa Cruz"];
 
-const form = document.getElementById("companyForm");
-const clearAllBtn = document.getElementById("clearAll");
-const template = document.getElementById("companyCardTemplate");
-const searchInput = document.getElementById("searchInput");
-const channelFilter = document.getElementById("channelFilter");
-
-const CHANNEL_LABELS = {
-  "nao-enviado": "Ainda não enviado",
-  linkedin: "LinkedIn",
-  email: "Email",
-  instagram: "Instagram",
-};
+const studentForm = document.getElementById("studentForm");
+const attendanceSearch = document.getElementById("attendanceSearch");
+const attendanceNucleusFilter = document.getElementById("attendanceNucleusFilter");
+const uniformNucleusFilter = document.getElementById("uniformNucleusFilter");
+const attendanceBoard = document.getElementById("attendanceBoard");
+const uniformTableBody = document.getElementById("uniformTableBody");
+const attendanceCardTemplate = document.getElementById("attendanceCardTemplate");
+const resetAllBtn = document.getElementById("resetAll");
 
 const state = {
-  companies: loadCompanies(),
-  query: "",
-  filterChannel: "todos",
+  students: loadStudents(),
+  search: "",
+  attendanceFilter: "todos",
+  uniformFilter: "todos",
 };
 
 render();
 
-form.addEventListener("submit", (event) => {
+studentForm.addEventListener("submit", (event) => {
   event.preventDefault();
 
-  const company = {
+  const student = {
     id: crypto.randomUUID(),
-    name: document.getElementById("name").value.trim(),
-    contact: document.getElementById("contact").value.trim(),
-    channel: document.getElementById("channel").value,
-    status: document.getElementById("status").value,
-    notes: document.getElementById("notes").value.trim(),
+    name: document.getElementById("studentName").value.trim(),
+    nucleus: document.getElementById("studentNucleus").value,
+    contact: document.getElementById("studentContact").value.trim(),
+    attendance: "não registrado",
+    uniform: {
+      size: "",
+      delivered: false,
+      notes: "",
+    },
   };
 
-  if (!company.name) {
+  if (!student.name) {
     return;
   }
 
-  state.companies.unshift(company);
+  state.students.unshift(student);
   persist();
   render();
-
-  form.reset();
-  document.getElementById("channel").value = "nao-enviado";
-  document.getElementById("status").value = "pendente";
+  studentForm.reset();
+  document.getElementById("studentNucleus").value = "Campo Grande";
 });
 
-searchInput.addEventListener("input", (event) => {
-  state.query = event.target.value.trim().toLowerCase();
-  render();
+attendanceSearch.addEventListener("input", (event) => {
+  state.search = event.target.value.toLowerCase().trim();
+  renderAttendance();
 });
 
-channelFilter.addEventListener("change", (event) => {
-  state.filterChannel = event.target.value;
-  render();
+attendanceNucleusFilter.addEventListener("change", (event) => {
+  state.attendanceFilter = event.target.value;
+  renderAttendance();
 });
 
-clearAllBtn.addEventListener("click", () => {
-  const confirmed = window.confirm("Tem certeza que deseja remover todas as empresas do CRM?");
+uniformNucleusFilter.addEventListener("change", (event) => {
+  state.uniformFilter = event.target.value;
+  renderUniformTable();
+});
 
+resetAllBtn.addEventListener("click", () => {
+  const confirmed = window.confirm("Deseja apagar todos os dados de presença e uniformes?");
   if (!confirmed) {
     return;
   }
 
-  state.companies = [];
+  state.students = [];
   persist();
   render();
 });
 
-function loadCompanies() {
+function loadStudents() {
   const saved = localStorage.getItem(STORAGE_KEY);
 
   if (!saved) {
     return [
       {
         id: crypto.randomUUID(),
-        name: "Lumina Tech",
-        contact: "Fernanda • fernanda@lumina.com",
-        channel: "email",
-        status: "enviada",
-        notes: "Aguardando retorno do diretor comercial.",
+        name: "Ana Beatriz",
+        nucleus: "Campo Grande",
+        contact: "Responsável: Carlos • (21) 98888-1111",
+        attendance: "presente",
+        uniform: { size: "M", delivered: true, notes: "Recebeu conjunto completo." },
       },
       {
         id: crypto.randomUUID(),
-        name: "Mercado Central",
-        contact: "João • joao@mercadocentral.com",
-        channel: "nao-enviado",
-        status: "pendente",
-        notes: "Cliente pediu uma proposta enxuta.",
-      },
-      {
-        id: crypto.randomUUID(),
-        name: "BioSaúde Plus",
-        contact: "Patrícia • patricia@biosaude.com",
-        channel: "linkedin",
-        status: "respondida",
-        notes: "Resposta positiva, agendar reunião de fechamento.",
+        name: "João Pedro",
+        nucleus: "Realengo",
+        contact: "Responsável: Marta • (21) 97777-2222",
+        attendance: "falta",
+        uniform: { size: "G", delivered: false, notes: "Aguardando reposição." },
       },
     ];
   }
 
   try {
     const parsed = JSON.parse(saved);
-    return parsed.map((company) => ({
-      ...company,
-      channel: CHANNEL_LABELS[company.channel] ? company.channel : "nao-enviado",
+    return parsed.map((student) => ({
+      ...student,
+      nucleus: NUCLEI.includes(student.nucleus) ? student.nucleus : "Campo Grande",
+      attendance: ["presente", "falta", "não registrado"].includes(student.attendance)
+        ? student.attendance
+        : "não registrado",
+      uniform: {
+        size: student.uniform?.size || "",
+        delivered: Boolean(student.uniform?.delivered),
+        notes: student.uniform?.notes || "",
+      },
     }));
   } catch {
     return [];
@@ -112,87 +116,147 @@ function loadCompanies() {
 }
 
 function persist() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.companies));
-}
-
-function getVisibleCompanies() {
-  return state.companies.filter((company) => {
-    const matchesQuery = company.name.toLowerCase().includes(state.query);
-    const matchesChannel = state.filterChannel === "todos" || company.channel === state.filterChannel;
-    return matchesQuery && matchesChannel;
-  });
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.students));
 }
 
 function render() {
-  const groups = {
-    pendente: [],
-    enviada: [],
-    respondida: [],
-  };
-
-  const visibleCompanies = getVisibleCompanies();
-
-  visibleCompanies.forEach((company) => {
-    if (groups[company.status]) {
-      groups[company.status].push(company);
-    }
-  });
-
-  renderColumn("pendente", groups.pendente);
-  renderColumn("enviada", groups.enviada);
-  renderColumn("respondida", groups.respondida);
-
-  document.getElementById("statPending").textContent = groups.pendente.length;
-  document.getElementById("statSent").textContent = groups.enviada.length;
-  document.getElementById("statAnswered").textContent = groups.respondida.length;
+  renderAttendance();
+  renderUniformTable();
+  renderMetrics();
 }
 
-function renderColumn(status, companies) {
-  const list = document.getElementById(`list-${status}`);
-  const counter = document.getElementById(`count-${status}`);
+function getAttendanceList() {
+  return state.students.filter((student) => {
+    const bySearch = student.name.toLowerCase().includes(state.search);
+    const byNucleus =
+      state.attendanceFilter === "todos" || student.nucleus === state.attendanceFilter;
+    return bySearch && byNucleus;
+  });
+}
 
-  list.innerHTML = "";
-  counter.textContent = companies.length;
+function renderAttendance() {
+  const visible = getAttendanceList();
+  attendanceBoard.innerHTML = "";
 
-  if (companies.length === 0) {
-    const empty = document.createElement("p");
-    empty.className = "empty";
-    empty.textContent = "Nenhuma empresa nesta visão.";
-    list.appendChild(empty);
+  NUCLEI.forEach((nucleus) => {
+    if (state.attendanceFilter !== "todos" && state.attendanceFilter !== nucleus) {
+      return;
+    }
+
+    const students = visible.filter((student) => student.nucleus === nucleus);
+
+    const column = document.createElement("article");
+    column.className = "nucleus-column";
+    column.innerHTML = `
+      <div class="nucleus-header">
+        <h3>${nucleus}</h3>
+        <span class="badge">${students.length}</span>
+      </div>
+    `;
+
+    if (students.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "empty";
+      empty.textContent = "Nenhum aluno neste filtro.";
+      column.appendChild(empty);
+    }
+
+    students.forEach((student) => {
+      const card = attendanceCardTemplate.content.firstElementChild.cloneNode(true);
+      card.querySelector(".student-name").textContent = student.name;
+      card.querySelector(".student-contact").textContent =
+        student.contact || "Contato não informado";
+      card.querySelector(".student-status").textContent = `Status: ${student.attendance}`;
+
+      card.querySelector(".btn-present").addEventListener("click", () => {
+        student.attendance = "presente";
+        persist();
+        render();
+      });
+
+      card.querySelector(".btn-absent").addEventListener("click", () => {
+        student.attendance = "falta";
+        persist();
+        render();
+      });
+
+      column.appendChild(card);
+    });
+
+    attendanceBoard.appendChild(column);
+  });
+}
+
+function getUniformList() {
+  return state.students.filter(
+    (student) => state.uniformFilter === "todos" || student.nucleus === state.uniformFilter,
+  );
+}
+
+function renderUniformTable() {
+  const students = getUniformList();
+  uniformTableBody.innerHTML = "";
+
+  if (students.length === 0) {
+    const row = document.createElement("tr");
+    row.innerHTML = '<td colspan="6" class="empty">Nenhum aluno para este núcleo.</td>';
+    uniformTableBody.appendChild(row);
     return;
   }
 
-  companies.forEach((company) => {
-    const card = template.content.firstElementChild.cloneNode(true);
+  students.forEach((student) => {
+    const row = document.createElement("tr");
+    row.innerHTML = `
+      <td>${student.name}</td>
+      <td>${student.nucleus}</td>
+      <td>
+        <select data-role="size">
+          <option value="">Selecionar</option>
+          <option value="PP">PP</option>
+          <option value="P">P</option>
+          <option value="M">M</option>
+          <option value="G">G</option>
+          <option value="GG">GG</option>
+        </select>
+      </td>
+      <td>
+        <select data-role="delivered">
+          <option value="nao">Não entregue</option>
+          <option value="sim">Entregue</option>
+        </select>
+      </td>
+      <td><input data-role="notes" type="text" placeholder="Observação da entrega" /></td>
+      <td><button data-role="save" class="small-btn" type="button">Salvar</button></td>
+    `;
 
-    card.querySelector(".company-name").textContent = company.name;
-    card.querySelector(".company-contact").textContent = company.contact || "Contato não informado";
-    card.querySelector(".company-channel").textContent = `Canal de envio: ${CHANNEL_LABELS[company.channel] || "Ainda não enviado"}`;
-    card.querySelector(".company-notes").textContent = company.notes || "Sem observações.";
+    const sizeSelect = row.querySelector('[data-role="size"]');
+    const deliveredSelect = row.querySelector('[data-role="delivered"]');
+    const notesInput = row.querySelector('[data-role="notes"]');
 
-    const statusSelect = card.querySelector(".status-select");
-    statusSelect.value = company.status;
-    statusSelect.addEventListener("change", (event) => {
-      company.status = event.target.value;
+    sizeSelect.value = student.uniform.size || "";
+    deliveredSelect.value = student.uniform.delivered ? "sim" : "nao";
+    notesInput.value = student.uniform.notes || "";
+
+    row.querySelector('[data-role="save"]').addEventListener("click", () => {
+      student.uniform.size = sizeSelect.value;
+      student.uniform.delivered = deliveredSelect.value === "sim";
+      student.uniform.notes = notesInput.value.trim();
       persist();
-      render();
+      renderMetrics();
     });
 
-    const channelSelect = card.querySelector(".channel-select");
-    channelSelect.value = company.channel || "nao-enviado";
-    channelSelect.addEventListener("change", (event) => {
-      company.channel = event.target.value;
-      persist();
-      render();
-    });
-
-    const deleteButton = card.querySelector(".delete-btn");
-    deleteButton.addEventListener("click", () => {
-      state.companies = state.companies.filter((item) => item.id !== company.id);
-      persist();
-      render();
-    });
-
-    list.appendChild(card);
+    uniformTableBody.appendChild(row);
   });
+}
+
+function renderMetrics() {
+  const total = state.students.length;
+  const present = state.students.filter((student) => student.attendance === "presente").length;
+  const absent = state.students.filter((student) => student.attendance === "falta").length;
+  const uniformDelivered = state.students.filter((student) => student.uniform.delivered).length;
+
+  document.getElementById("totalStudents").textContent = total;
+  document.getElementById("presentCount").textContent = present;
+  document.getElementById("absentCount").textContent = absent;
+  document.getElementById("uniformDelivered").textContent = uniformDelivered;
 }
