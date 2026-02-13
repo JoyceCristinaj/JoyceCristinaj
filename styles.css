@@ -1,14 +1,15 @@
 :root {
-  --bg: #f3f6ff;
+  --bg: #f5f3f4;
   --panel: #ffffff;
-  --ink: #1e2448;
-  --muted: #60689c;
-  --primary: #3f57d3;
-  --primary-soft: #e6ebff;
-  --present: #2ea66f;
-  --absent: #d44963;
-  --border: #dde3ff;
-  --shadow: 0 14px 30px rgba(32, 56, 138, 0.1);
+  --ink: #24262c;
+  --muted: #646872;
+  --primary: #8f1422;
+  --primary-strong: #6f101b;
+  --primary-soft: #f9e8eb;
+  --present: #238a5a;
+  --absent: #b31d2f;
+  --border: #e8d9dc;
+  --shadow: 0 14px 30px rgba(98, 16, 27, 0.12);
 }
 
 * {
@@ -17,32 +18,46 @@
 
 body {
   margin: 0;
-  background: var(--bg);
+  background: radial-gradient(circle at 0 0, #fff, var(--bg) 58%);
   color: var(--ink);
   font-family: "Inter", "Segoe UI", Arial, sans-serif;
 }
 
 .hero {
-  background: linear-gradient(130deg, #23378a, #3f57d3 60%, #5870ee);
+  background: linear-gradient(130deg, #2f3136, #393c43 60%, #202227);
   color: #fff;
-  padding: 2rem 1.2rem;
+  padding: 1.5rem 1.2rem 2.2rem;
+  border-bottom: 4px solid var(--primary);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.logo {
+  width: 78px;
+  height: 78px;
+  border-radius: 12px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
 }
 
 .hero h1 {
-  margin: 0.4rem 0;
-  font-size: clamp(1.45rem, 2vw, 2rem);
+  margin: 0.2rem 0 0;
+  font-size: clamp(1.38rem, 2vw, 2rem);
 }
 
 .eyebrow {
   margin: 0;
   font-weight: 700;
-  opacity: 0.88;
+  color: #ffd8de;
 }
 
 .subtitle {
-  margin: 0;
+  margin: 0.8rem 0 0;
   max-width: 760px;
-  opacity: 0.95;
+  color: #eceef1;
 }
 
 .layout {
@@ -60,6 +75,10 @@ body {
   padding: 1rem;
 }
 
+.panel h2 {
+  margin-top: 0;
+}
+
 .metrics {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
@@ -67,7 +86,8 @@ body {
 }
 
 .metrics article {
-  background: var(--primary-soft);
+  background: linear-gradient(180deg, #fff, var(--primary-soft));
+  border: 1px solid #f1ced4;
   border-radius: 12px;
   padding: 0.8rem;
 }
@@ -75,6 +95,7 @@ body {
 .metrics h2 {
   margin: 0;
   font-size: 1.8rem;
+  color: var(--primary-strong);
 }
 
 .metrics p {
@@ -112,6 +133,13 @@ textarea {
   background: #fff;
 }
 
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid #df8b97;
+  border-color: var(--primary);
+}
+
 button {
   border: 0;
   border-radius: 10px;
@@ -119,7 +147,7 @@ button {
 }
 
 .primary {
-  background: var(--primary);
+  background: linear-gradient(180deg, var(--primary), var(--primary-strong));
   color: #fff;
   padding: 0.7rem;
   font-weight: 700;
@@ -156,7 +184,7 @@ button {
 .nucleus-column {
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: #f9faff;
+  background: #fffcfc;
   padding: 0.75rem;
 }
 
@@ -168,8 +196,8 @@ button {
 }
 
 .badge {
-  background: #e2e9ff;
-  color: #2942b5;
+  background: var(--primary-soft);
+  color: var(--primary-strong);
   font-weight: 700;
   border-radius: 999px;
   padding: 0.2rem 0.6rem;
@@ -233,6 +261,11 @@ td {
   vertical-align: top;
 }
 
+th {
+  background: #fdf5f7;
+  color: #5e1620;
+}
+
 .small-btn {
   padding: 0.4rem 0.65rem;
   background: var(--primary);
@@ -253,6 +286,15 @@ td {
 @media (max-width: 700px) {
   .layout {
     width: 96%;
+  }
+
+  .brand {
+    align-items: flex-start;
+  }
+
+  .logo {
+    width: 64px;
+    height: 64px;
   }
 
   .card-buttons {

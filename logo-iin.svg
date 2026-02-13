@@ -1,0 +1,9 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Logo Instituto Irmãos Nogueira">
+  <rect width="256" height="256" rx="24" fill="#2C2E34"/>
+  <path d="M83 36H173L220 83V173L173 220H83L36 173V83L83 36Z" stroke="#F5F5F5" stroke-width="5"/>
+  <rect x="64" y="92" width="20" height="14" fill="#A51524"/>
+  <rect x="64" y="114" width="20" height="50" fill="#A51524"/>
+  <rect x="94" y="92" width="20" height="14" fill="#F2F2F2"/>
+  <rect x="94" y="114" width="20" height="50" fill="#F2F2F2"/>
+  <path d="M126 92H173C183.493 92 192 100.507 192 111V164H166V125H152V164H126V92Z" fill="#F2F2F2"/>
+</svg>
