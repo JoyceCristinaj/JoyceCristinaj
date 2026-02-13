@@ -3,157 +3,153 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CRM Propostas • Pipeline Comercial</title>
+    <title>Instituto Irmãos Nogueira • Presença e Uniformes</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="bg-decoration" aria-hidden="true"></div>
-
     <header class="hero">
-      <div class="hero-copy">
-        <p class="eyebrow">CRM Comercial</p>
-        <h1>Pipeline de Propostas</h1>
-        <p>
-          Um painel organizado para visualizar empresas que faltam contato, propostas enviadas e respostas recebidas.
-        </p>
+      <div class="brand">
+        <img src="logo-iin.svg" alt="Logo Instituto Irmãos Nogueira" class="logo" />
+        <div>
+          <p class="eyebrow">Instituto Irmãos Nogueira</p>
+          <h1>Controle de Chamadas e Distribuição de Uniformes</h1>
+        </div>
       </div>
-
-      <div class="stats" id="statsCards">
-        <article class="stat stat-pending">
-          <h2 id="statPending">0</h2>
-          <p>Faltam enviar</p>
-        </article>
-        <article class="stat stat-sent">
-          <h2 id="statSent">0</h2>
-          <p>Enviadas</p>
-        </article>
-        <article class="stat stat-answered">
-          <h2 id="statAnswered">0</h2>
-          <p>Respondidas</p>
-        </article>
-      </div>
+      <p class="subtitle">
+        Painel único para gerenciar presença/falta dos alunos por turma e registrar a entrega de uniformes por núcleo.
+      </p>
     </header>
 
-    <main>
-      <section class="panel form-panel">
-        <h2>Adicionar empresa</h2>
-        <form id="companyForm">
+    <main class="layout">
+      <section class="panel metrics">
+        <article>
+          <h2 id="totalStudents">0</h2>
+          <p>Alunos cadastrados</p>
+        </article>
+        <article>
+          <h2 id="presentCount">0</h2>
+          <p>Presentes hoje</p>
+        </article>
+        <article>
+          <h2 id="absentCount">0</h2>
+          <p>Faltas hoje</p>
+        </article>
+        <article>
+          <h2 id="uniformDelivered">0</h2>
+          <p>Uniformes entregues</p>
+        </article>
+      </section>
+
+      <section class="panel controls">
+        <h2>Cadastrar aluno</h2>
+        <form id="studentForm">
           <label>
-            Nome da empresa
-            <input type="text" id="name" placeholder="Ex: Tech Soluções" required />
+            Nome do aluno
+            <input id="studentName" type="text" placeholder="Ex: Maria Souza" required />
           </label>
 
           <label>
-            Contato
-            <input type="text" id="contact" placeholder="Ex: Ana Silva • ana@email.com" />
-          </label>
-
-          <label>
-            Local de envio
-            <select id="channel" required>
-              <option value="nao-enviado">Ainda não enviado</option>
-              <option value="linkedin">LinkedIn</option>
-              <option value="email">Email</option>
-              <option value="instagram">Instagram</option>
+            Turma / Núcleo
+            <select id="studentNucleus" required>
+              <option value="Campo Grande">Campo Grande</option>
+              <option value="Jacarezinho">Jacarezinho</option>
+              <option value="Realengo">Realengo</option>
+              <option value="Santa Cruz">Santa Cruz</option>
             </select>
           </label>
 
           <label>
-            Status
-            <select id="status" required>
-              <option value="pendente">Falta enviar</option>
-              <option value="enviada">Proposta enviada</option>
-              <option value="respondida">Empresa respondeu</option>
-            </select>
+            Responsável / contato
+            <input id="studentContact" type="text" placeholder="Ex: Responsável: Carla • (21) 99999-9999" />
           </label>
 
-          <label>
-            Observações
-            <textarea id="notes" rows="3" placeholder="Ex: pediu retorno na próxima semana"></textarea>
-          </label>
-
-          <button type="submit" class="primary-btn">Adicionar ao CRM</button>
+          <button class="primary" type="submit">Adicionar aluno</button>
         </form>
       </section>
 
-      <section class="panel board-panel">
-        <div class="board-header">
-          <h2>Quadro de acompanhamento</h2>
-          <button id="clearAll" type="button" class="ghost">Limpar tudo</button>
+      <section class="panel class-calendar-panel">
+        <div class="panel-title-row">
+          <h2>Calendário de aulas por núcleo</h2>
         </div>
-
-        <div class="board-tools">
+        <form id="classCalendarForm" class="calendar-form">
           <label>
-            Buscar empresa
-            <input id="searchInput" type="search" placeholder="Digite o nome da empresa" />
-          </label>
-          <label>
-            Canal
-            <select id="channelFilter">
-              <option value="todos">Todos os canais</option>
-              <option value="nao-enviado">Ainda não enviado</option>
-              <option value="linkedin">LinkedIn</option>
-              <option value="email">Email</option>
-              <option value="instagram">Instagram</option>
+            Núcleo
+            <select id="calendarNucleus" required>
+              <option value="Campo Grande">Campo Grande</option>
+              <option value="Jacarezinho">Jacarezinho</option>
+              <option value="Realengo">Realengo</option>
+              <option value="Santa Cruz">Santa Cruz</option>
             </select>
           </label>
+          <label>
+            Dia de aula
+            <input id="calendarDate" type="date" required />
+          </label>
+          <button class="primary" type="submit">Registrar aula</button>
+        </form>
+        <div id="classCalendarBoard" class="calendar-grid"></div>
+      </section>
+
+      <section class="panel attendance-panel">
+        <div class="panel-title-row">
+          <h2>Controle de chamadas</h2>
+          <div class="toolbar">
+            <input id="attendanceSearch" type="search" placeholder="Buscar aluno" />
+            <select id="attendanceNucleusFilter">
+              <option value="todos">Todas as turmas</option>
+              <option value="Campo Grande">Campo Grande</option>
+              <option value="Jacarezinho">Jacarezinho</option>
+              <option value="Realengo">Realengo</option>
+              <option value="Santa Cruz">Santa Cruz</option>
+            </select>
+          </div>
         </div>
 
-        <div class="board" id="board">
-          <article class="column" data-status="pendente">
-            <header>
-              <h3>Faltam enviar</h3>
-              <span class="counter" id="count-pendente">0</span>
-            </header>
-            <div class="card-list" id="list-pendente"></div>
-          </article>
+        <div id="attendanceBoard" class="board-grid"></div>
+      </section>
 
-          <article class="column" data-status="enviada">
-            <header>
-              <h3>Enviadas</h3>
-              <span class="counter" id="count-enviada">0</span>
-            </header>
-            <div class="card-list" id="list-enviada"></div>
-          </article>
-
-          <article class="column" data-status="respondida">
-            <header>
-              <h3>Respondidas</h3>
-              <span class="counter" id="count-respondida">0</span>
-            </header>
-            <div class="card-list" id="list-respondida"></div>
-          </article>
+      <section class="panel uniform-panel">
+        <div class="panel-title-row">
+          <h2>Controle de distribuição de uniformes</h2>
+          <select id="uniformNucleusFilter">
+            <option value="todos">Todos os núcleos</option>
+            <option value="Campo Grande">Campo Grande</option>
+            <option value="Jacarezinho">Jacarezinho</option>
+            <option value="Realengo">Realengo</option>
+            <option value="Santa Cruz">Santa Cruz</option>
+          </select>
         </div>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr>
+                <th>Aluno</th>
+                <th>Núcleo</th>
+                <th>Tamanho</th>
+                <th>Status da entrega</th>
+                <th>Observação</th>
+                <th>Ação</th>
+              </tr>
+            </thead>
+            <tbody id="uniformTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel actions">
+        <button id="resetAll" class="ghost" type="button">Limpar todos os registros</button>
       </section>
     </main>
 
-    <template id="companyCardTemplate">
-      <article class="company-card">
-        <div class="card-top">
-          <h4 class="company-name"></h4>
-          <button type="button" class="delete-btn" title="Remover">✕</button>
-        </div>
-        <p class="company-contact"></p>
-        <p class="company-channel"></p>
-        <p class="company-notes"></p>
-        <div class="card-actions">
-          <label>
-            Mover para
-            <select class="status-select">
-              <option value="pendente">Falta enviar</option>
-              <option value="enviada">Enviada</option>
-              <option value="respondida">Respondida</option>
-            </select>
-          </label>
-          <label>
-            Enviado por
-            <select class="channel-select">
-              <option value="nao-enviado">Ainda não enviado</option>
-              <option value="linkedin">LinkedIn</option>
-              <option value="email">Email</option>
-              <option value="instagram">Instagram</option>
-            </select>
-          </label>
+    <template id="attendanceCardTemplate">
+      <article class="student-card">
+        <h3 class="student-name"></h3>
+        <p class="student-contact"></p>
+        <p class="student-status"></p>
+        <div class="card-buttons">
+          <button class="btn-present" type="button">Presente</button>
+          <button class="btn-absent" type="button">Falta</button>
         </div>
       </article>
     </template>
