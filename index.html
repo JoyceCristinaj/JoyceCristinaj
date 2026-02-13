@@ -15,87 +15,56 @@
           <h1>Controle de Chamadas e Distribuição de Uniformes</h1>
         </div>
       </div>
-      <p class="subtitle">
-        Painel único para gerenciar presença/falta dos alunos por turma e registrar a entrega de uniformes por núcleo.
-      </p>
+      <p class="subtitle">Painel com acesso separado para professores e gestão interna.</p>
     </header>
 
     <main class="layout">
-      <section class="panel metrics">
-        <article>
-          <h2 id="totalStudents">0</h2>
-          <p>Alunos cadastrados</p>
-        </article>
-        <article>
-          <h2 id="presentCount">0</h2>
-          <p>Presentes hoje</p>
-        </article>
-        <article>
-          <h2 id="absentCount">0</h2>
-          <p>Faltas hoje</p>
-        </article>
-        <article>
-          <h2 id="uniformDelivered">0</h2>
-          <p>Uniformes entregues</p>
-        </article>
-      </section>
-
-      <section class="panel controls">
-        <h2>Cadastrar aluno</h2>
-        <form id="studentForm">
-          <label>
-            Nome do aluno
-            <input id="studentName" type="text" placeholder="Ex: Maria Souza" required />
-          </label>
-
-          <label>
-            Turma / Núcleo
-            <select id="studentNucleus" required>
-              <option value="Campo Grande">Campo Grande</option>
-              <option value="Jacarezinho">Jacarezinho</option>
-              <option value="Realengo">Realengo</option>
-              <option value="Santa Cruz">Santa Cruz</option>
-            </select>
-          </label>
-
-          <label>
-            Responsável / contato
-            <input id="studentContact" type="text" placeholder="Ex: Responsável: Carla • (21) 99999-9999" />
-          </label>
-
-          <button class="primary" type="submit">Adicionar aluno</button>
-        </form>
-      </section>
-
-      <section class="panel class-calendar-panel">
+      <section class="panel access-panel">
         <div class="panel-title-row">
-          <h2>Calendário de aulas por núcleo</h2>
+          <h2>Acesso ao sistema</h2>
+          <button id="logoutBtn" type="button" class="ghost hidden">Sair da sessão</button>
         </div>
-        <form id="classCalendarForm" class="calendar-form">
+
+        <div class="access-grid">
+          <article class="access-card">
+            <h3>Área do Professor</h3>
+            <p>Usuário de exemplo: <strong>professor</strong></p>
+            <p>Senha de exemplo: <strong>prof123</strong></p>
+          </article>
+          <article class="access-card">
+            <h3>Gestão Interna</h3>
+            <p>Usuário de exemplo: <strong>gestao</strong></p>
+            <p>Senha de exemplo: <strong>gestao123</strong></p>
+          </article>
+        </div>
+
+        <form id="loginForm" class="login-form">
           <label>
-            Núcleo
-            <select id="calendarNucleus" required>
-              <option value="Campo Grande">Campo Grande</option>
-              <option value="Jacarezinho">Jacarezinho</option>
-              <option value="Realengo">Realengo</option>
-              <option value="Santa Cruz">Santa Cruz</option>
+            Tipo de acesso
+            <select id="loginRole" required>
+              <option value="professor">Professor</option>
+              <option value="admin">Gestão interna</option>
             </select>
           </label>
           <label>
-            Dia de aula
-            <input id="calendarDate" type="date" required />
+            Usuário
+            <input id="loginUsername" type="text" required placeholder="Digite seu usuário" />
           </label>
-          <button class="primary" type="submit">Registrar aula</button>
+          <label>
+            Senha
+            <input id="loginPassword" type="password" required placeholder="Digite sua senha" />
+          </label>
+          <button class="primary" type="submit">Entrar</button>
         </form>
-        <div id="classCalendarBoard" class="calendar-grid"></div>
+        <p id="accessStatus" class="report-status">Faça login para abrir sua área.</p>
       </section>
 
-      <section class="panel attendance-panel">
+      <section id="professorArea" class="panel role-area hidden">
         <div class="panel-title-row">
-          <h2>Controle de chamadas</h2>
+          <h2>Área do Professor • Chamada</h2>
           <div class="toolbar">
-            <input id="attendanceSearch" type="search" placeholder="Buscar aluno" />
-            <select id="attendanceNucleusFilter">
+            <input id="professorSearch" type="search" placeholder="Buscar aluno" />
+            <select id="professorNucleusFilter">
               <option value="todos">Todas as turmas</option>
               <option value="Campo Grande">Campo Grande</option>
               <option value="Jacarezinho">Jacarezinho</option>
@@ -104,59 +73,146 @@
             </select>
           </div>
         </div>
-
-        <div id="attendanceBoard" class="board-grid"></div>
+        <div id="professorAttendanceBoard" class="board-grid"></div>
       </section>
 
-      <section class="panel uniform-panel">
-        <div class="panel-title-row">
-          <h2>Controle de distribuição de uniformes</h2>
-          <select id="uniformNucleusFilter">
-            <option value="todos">Todos os núcleos</option>
-            <option value="Campo Grande">Campo Grande</option>
-            <option value="Jacarezinho">Jacarezinho</option>
-            <option value="Realengo">Realengo</option>
-            <option value="Santa Cruz">Santa Cruz</option>
-          </select>
-        </div>
+      <div id="adminArea" class="role-area hidden">
+        <section class="panel metrics">
+          <article>
+            <h2 id="totalStudents">0</h2>
+            <p>Alunos cadastrados</p>
+          </article>
+          <article>
+            <h2 id="presentCount">0</h2>
+            <p>Presentes hoje</p>
+          </article>
+          <article>
+            <h2 id="absentCount">0</h2>
+            <p>Faltas hoje</p>
+          </article>
+          <article>
+            <h2 id="uniformDelivered">0</h2>
+            <p>Uniformes entregues</p>
+          </article>
+        </section>
 
-        <div class="table-wrapper">
-          <table>
-            <thead>
-              <tr>
-                <th>Aluno</th>
-                <th>Núcleo</th>
-                <th>Tamanho</th>
-                <th>Status da entrega</th>
-                <th>Observação</th>
-                <th>Ação</th>
-              </tr>
-            </thead>
-            <tbody id="uniformTableBody"></tbody>
-          </table>
-        </div>
-      </section>
+        <section class="panel controls">
+          <h2>Cadastrar aluno</h2>
+          <form id="studentForm">
+            <label>
+              Nome do aluno
+              <input id="studentName" type="text" placeholder="Ex: Maria Souza" required />
+            </label>
 
+            <label>
+              Turma / Núcleo
+              <select id="studentNucleus" required>
+                <option value="Campo Grande">Campo Grande</option>
+                <option value="Jacarezinho">Jacarezinho</option>
+                <option value="Realengo">Realengo</option>
+                <option value="Santa Cruz">Santa Cruz</option>
+              </select>
+            </label>
 
-      <section class="panel report-panel">
-        <div class="panel-title-row">
-          <h2>Relatório para gestor</h2>
-          <div class="report-controls">
-            <select id="reportPeriod">
-              <option value="semanal">Semanal</option>
-              <option value="mensal">Mensal</option>
-            </select>
-            <button id="generateReportBtn" class="primary" type="button">📄 Gerar relatório completo</button>
+            <label>
+              Responsável / contato
+              <input id="studentContact" type="text" placeholder="Ex: Responsável: Carla • (21) 99999-9999" />
+            </label>
+
+            <button class="primary" type="submit">Adicionar aluno</button>
+          </form>
+        </section>
+
+        <section class="panel class-calendar-panel">
+          <div class="panel-title-row">
+            <h2>Calendário de aulas por núcleo</h2>
           </div>
-        </div>
-        <p id="reportStatus" class="report-status">
-          Gere um relatório completo para prestação de contas com presença, faltas, aulas e uniformes.
-        </p>
-      </section>
+          <form id="classCalendarForm" class="calendar-form">
+            <label>
+              Núcleo
+              <select id="calendarNucleus" required>
+                <option value="Campo Grande">Campo Grande</option>
+                <option value="Jacarezinho">Jacarezinho</option>
+                <option value="Realengo">Realengo</option>
+                <option value="Santa Cruz">Santa Cruz</option>
+              </select>
+            </label>
+            <label>
+              Dia de aula
+              <input id="calendarDate" type="date" required />
+            </label>
+            <button class="primary" type="submit">Registrar aula</button>
+          </form>
+          <div id="classCalendarBoard" class="calendar-grid"></div>
+        </section>
 
-      <section class="panel actions">
-        <button id="resetAll" class="ghost" type="button">Limpar todos os registros</button>
-      </section>
+        <section class="panel attendance-panel">
+          <div class="panel-title-row">
+            <h2>Controle de chamadas (Gestão)</h2>
+            <div class="toolbar">
+              <input id="attendanceSearch" type="search" placeholder="Buscar aluno" />
+              <select id="attendanceNucleusFilter">
+                <option value="todos">Todas as turmas</option>
+                <option value="Campo Grande">Campo Grande</option>
+                <option value="Jacarezinho">Jacarezinho</option>
+                <option value="Realengo">Realengo</option>
+                <option value="Santa Cruz">Santa Cruz</option>
+              </select>
+            </div>
+          </div>
+
+          <div id="attendanceBoard" class="board-grid"></div>
+        </section>
+
+        <section class="panel uniform-panel">
+          <div class="panel-title-row">
+            <h2>Controle de distribuição de uniformes</h2>
+            <select id="uniformNucleusFilter">
+              <option value="todos">Todos os núcleos</option>
+              <option value="Campo Grande">Campo Grande</option>
+              <option value="Jacarezinho">Jacarezinho</option>
+              <option value="Realengo">Realengo</option>
+              <option value="Santa Cruz">Santa Cruz</option>
+            </select>
+          </div>
+
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Aluno</th>
+                  <th>Núcleo</th>
+                  <th>Tamanho</th>
+                  <th>Status da entrega</th>
+                  <th>Observação</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody id="uniformTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel report-panel">
+          <div class="panel-title-row">
+            <h2>Relatório para gestor</h2>
+            <div class="report-controls">
+              <select id="reportPeriod">
+                <option value="semanal">Semanal</option>
+                <option value="mensal">Mensal</option>
+              </select>
+              <button id="generateReportBtn" class="primary" type="button">📄 Gerar relatório completo</button>
+            </div>
+          </div>
+          <p id="reportStatus" class="report-status">
+            Gere um relatório completo para prestação de contas com presença, faltas, aulas e uniformes.
+          </p>
+        </section>
+
+        <section class="panel actions">
+          <button id="resetAll" class="ghost" type="button">Limpar todos os registros</button>
+        </section>
+      </div>
     </main>
 
     <template id="attendanceCardTemplate">

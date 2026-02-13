@@ -1,120 +1,196 @@
-const STORAGE_KEY = "instituto-irmaos-nogueira-v2";
+const STORAGE_KEY = "instituto-irmaos-nogueira-v3";
+const SESSION_KEY = "instituto-irmaos-nogueira-session";
 const NUCLEI = ["Campo Grande", "Jacarezinho", "Realengo", "Santa Cruz"];
 
-const studentForm = document.getElementById("studentForm");
-const attendanceSearch = document.getElementById("attendanceSearch");
-const attendanceNucleusFilter = document.getElementById("attendanceNucleusFilter");
-const uniformNucleusFilter = document.getElementById("uniformNucleusFilter");
-const attendanceBoard = document.getElementById("attendanceBoard");
-const uniformTableBody = document.getElementById("uniformTableBody");
-const attendanceCardTemplate = document.getElementById("attendanceCardTemplate");
-const resetAllBtn = document.getElementById("resetAll");
-const classCalendarForm = document.getElementById("classCalendarForm");
-const classCalendarBoard = document.getElementById("classCalendarBoard");
-const reportPeriod = document.getElementById("reportPeriod");
-const generateReportBtn = document.getElementById("generateReportBtn");
-const reportStatus = document.getElementById("reportStatus");
+const CREDENTIALS = {
+  professor: { username: "professor", password: "prof123" },
+  admin: { username: "gestao", password: "gestao123" },
+};
 
 const state = {
   students: [],
   classDaysByNucleus: createEmptyClassDays(),
   search: "",
   attendanceFilter: "todos",
+  professorSearch: "",
+  professorFilter: "todos",
   uniformFilter: "todos",
+  activeRole: null,
+};
+
+const ui = {
+  loginForm: document.getElementById("loginForm"),
+  loginRole: document.getElementById("loginRole"),
+  loginUsername: document.getElementById("loginUsername"),
+  loginPassword: document.getElementById("loginPassword"),
+  accessStatus: document.getElementById("accessStatus"),
+  logoutBtn: document.getElementById("logoutBtn"),
+  professorArea: document.getElementById("professorArea"),
+  adminArea: document.getElementById("adminArea"),
+  professorSearch: document.getElementById("professorSearch"),
+  professorNucleusFilter: document.getElementById("professorNucleusFilter"),
+  professorAttendanceBoard: document.getElementById("professorAttendanceBoard"),
+  studentForm: document.getElementById("studentForm"),
+  classCalendarForm: document.getElementById("classCalendarForm"),
+  attendanceSearch: document.getElementById("attendanceSearch"),
+  attendanceNucleusFilter: document.getElementById("attendanceNucleusFilter"),
+  uniformNucleusFilter: document.getElementById("uniformNucleusFilter"),
+  attendanceBoard: document.getElementById("attendanceBoard"),
+  uniformTableBody: document.getElementById("uniformTableBody"),
+  attendanceCardTemplate: document.getElementById("attendanceCardTemplate"),
+  resetAllBtn: document.getElementById("resetAll"),
+  classCalendarBoard: document.getElementById("classCalendarBoard"),
+  reportPeriod: document.getElementById("reportPeriod"),
+  generateReportBtn: document.getElementById("generateReportBtn"),
+  reportStatus: document.getElementById("reportStatus"),
 };
 
 loadData();
+loadSession();
+bindEvents();
 render();
 
-studentForm.addEventListener("submit", (event) => {
+function bindEvents() {
+  ui.loginForm.addEventListener("submit", handleLogin);
+  ui.logoutBtn.addEventListener("click", logout);
+
+  ui.professorSearch.addEventListener("input", (event) => {
+    state.professorSearch = event.target.value.toLowerCase().trim();
+    renderProfessorAttendance();
+  });
+
+  ui.professorNucleusFilter.addEventListener("change", (event) => {
+    state.professorFilter = event.target.value;
+    renderProfessorAttendance();
+  });
+
+  ui.studentForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const student = {
+      id: crypto.randomUUID(),
+      name: document.getElementById("studentName").value.trim(),
+      nucleus: document.getElementById("studentNucleus").value,
+      contact: document.getElementById("studentContact").value.trim(),
+      attendance: "não registrado",
+      uniform: { size: "", delivered: false, notes: "" },
+    };
+
+    if (!student.name) {
+      return;
+    }
+
+    state.students.unshift(student);
+    persist();
+    render();
+    ui.studentForm.reset();
+    document.getElementById("studentNucleus").value = "Campo Grande";
+  });
+
+  ui.classCalendarForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+
+    const nucleus = document.getElementById("calendarNucleus").value;
+    const date = document.getElementById("calendarDate").value;
+
+    if (!nucleus || !date) {
+      return;
+    }
+
+    const days = state.classDaysByNucleus[nucleus] || [];
+
+    if (days.includes(date)) {
+      window.alert("Esse dia já foi registrado para este núcleo.");
+      return;
+    }
+
+    days.push(date);
+    days.sort((a, b) => b.localeCompare(a));
+    state.classDaysByNucleus[nucleus] = days;
+
+    persist();
+    renderClassCalendar();
+    ui.classCalendarForm.reset();
+    document.getElementById("calendarNucleus").value = "Campo Grande";
+  });
+
+  ui.attendanceSearch.addEventListener("input", (event) => {
+    state.search = event.target.value.toLowerCase().trim();
+    renderAttendance();
+  });
+
+  ui.attendanceNucleusFilter.addEventListener("change", (event) => {
+    state.attendanceFilter = event.target.value;
+    renderAttendance();
+  });
+
+  ui.uniformNucleusFilter.addEventListener("change", (event) => {
+    state.uniformFilter = event.target.value;
+    renderUniformTable();
+  });
+
+  ui.resetAllBtn.addEventListener("click", () => {
+    const confirmed = window.confirm("Deseja apagar todos os dados de presença, uniformes e calendário?");
+    if (!confirmed) {
+      return;
+    }
+
+    state.students = [];
+    state.classDaysByNucleus = createEmptyClassDays();
+    persist();
+    render();
+  });
+
+  ui.generateReportBtn.addEventListener("click", () => {
+    const period = ui.reportPeriod.value;
+    const reportText = buildFullReport(period);
+    downloadReport(reportText, period);
+
+    const generatedAt = new Date().toLocaleString("pt-BR");
+    ui.reportStatus.textContent = `Relatório ${period} gerado com sucesso em ${generatedAt}.`;
+  });
+}
+
+function handleLogin(event) {
   event.preventDefault();
 
-  const student = {
-    id: crypto.randomUUID(),
-    name: document.getElementById("studentName").value.trim(),
-    nucleus: document.getElementById("studentNucleus").value,
-    contact: document.getElementById("studentContact").value.trim(),
-    attendance: "não registrado",
-    uniform: {
-      size: "",
-      delivered: false,
-      notes: "",
-    },
-  };
+  const role = ui.loginRole.value;
+  const username = ui.loginUsername.value.trim();
+  const password = ui.loginPassword.value;
+  const valid = CREDENTIALS[role];
 
-  if (!student.name) {
+  if (valid && username === valid.username && password === valid.password) {
+    state.activeRole = role;
+    localStorage.setItem(SESSION_KEY, role);
+    ui.accessStatus.textContent = `Login realizado com sucesso na área ${role === "admin" ? "Gestão" : "Professor"}.`;
+    ui.loginForm.reset();
+    renderAccess();
     return;
   }
 
-  state.students.unshift(student);
-  persist();
-  render();
-  studentForm.reset();
-  document.getElementById("studentNucleus").value = "Campo Grande";
-});
+  ui.accessStatus.textContent = "Usuário ou senha inválidos. Tente novamente.";
+}
 
-classCalendarForm.addEventListener("submit", (event) => {
-  event.preventDefault();
+function logout() {
+  state.activeRole = null;
+  localStorage.removeItem(SESSION_KEY);
+  ui.accessStatus.textContent = "Sessão encerrada. Faça login para acessar.";
+  renderAccess();
+}
 
-  const nucleus = document.getElementById("calendarNucleus").value;
-  const date = document.getElementById("calendarDate").value;
+function loadSession() {
+  const role = localStorage.getItem(SESSION_KEY);
+  state.activeRole = role === "admin" || role === "professor" ? role : null;
+}
 
-  if (!nucleus || !date) {
-    return;
-  }
+function renderAccess() {
+  const isAdmin = state.activeRole === "admin";
+  const isProfessor = state.activeRole === "professor";
 
-  const days = state.classDaysByNucleus[nucleus] || [];
-
-  if (days.includes(date)) {
-    window.alert("Esse dia já foi registrado para este núcleo.");
-    return;
-  }
-
-  days.push(date);
-  days.sort((a, b) => b.localeCompare(a));
-  state.classDaysByNucleus[nucleus] = days;
-
-  persist();
-  renderClassCalendar();
-  classCalendarForm.reset();
-  document.getElementById("calendarNucleus").value = "Campo Grande";
-});
-
-attendanceSearch.addEventListener("input", (event) => {
-  state.search = event.target.value.toLowerCase().trim();
-  renderAttendance();
-});
-
-attendanceNucleusFilter.addEventListener("change", (event) => {
-  state.attendanceFilter = event.target.value;
-  renderAttendance();
-});
-
-uniformNucleusFilter.addEventListener("change", (event) => {
-  state.uniformFilter = event.target.value;
-  renderUniformTable();
-});
-
-resetAllBtn.addEventListener("click", () => {
-  const confirmed = window.confirm("Deseja apagar todos os dados de presença, uniformes e calendário?");
-  if (!confirmed) {
-    return;
-  }
-
-  state.students = [];
-  state.classDaysByNucleus = createEmptyClassDays();
-  persist();
-  render();
-});
-
-generateReportBtn.addEventListener("click", () => {
-  const period = reportPeriod.value;
-  const reportText = buildFullReport(period);
-  downloadReport(reportText, period);
-
-  const generatedAt = new Date().toLocaleString("pt-BR");
-  reportStatus.textContent = `Relatório ${period} gerado com sucesso em ${generatedAt}.`;
-});
+  ui.adminArea.classList.toggle("hidden", !isAdmin);
+  ui.professorArea.classList.toggle("hidden", !isProfessor);
+  ui.logoutBtn.classList.toggle("hidden", !state.activeRole);
+}
 
 function createEmptyClassDays() {
   return {
@@ -187,6 +263,7 @@ function loadData() {
         .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
         .sort((a, b) => b.localeCompare(a));
     });
+
     state.classDaysByNucleus = loadedCalendar;
   } catch {
     state.students = [];
@@ -195,22 +272,31 @@ function loadData() {
 }
 
 function persist() {
-  const payload = {
-    students: state.students,
-    classDaysByNucleus: state.classDaysByNucleus,
-  };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify({ students: state.students, classDaysByNucleus: state.classDaysByNucleus }),
+  );
+}
+
+function getFilteredStudents(query, filter) {
+  return state.students.filter((student) => {
+    const bySearch = student.name.toLowerCase().includes(query);
+    const byNucleus = filter === "todos" || student.nucleus === filter;
+    return bySearch && byNucleus;
+  });
 }
 
 function render() {
+  renderAccess();
   renderClassCalendar();
   renderAttendance();
+  renderProfessorAttendance();
   renderUniformTable();
   renderMetrics();
 }
 
 function renderClassCalendar() {
-  classCalendarBoard.innerHTML = "";
+  ui.classCalendarBoard.innerHTML = "";
 
   NUCLEI.forEach((nucleus) => {
     const card = document.createElement("article");
@@ -238,8 +324,8 @@ function renderClassCalendar() {
     days.forEach((date) => {
       const item = document.createElement("li");
       item.className = "calendar-item";
-
       const readable = new Date(`${date}T00:00:00`).toLocaleDateString("pt-BR");
+
       item.innerHTML = `
         <span>${readable}</span>
         <button class="ghost tiny-btn" type="button">Remover</button>
@@ -257,30 +343,20 @@ function renderClassCalendar() {
     });
 
     card.appendChild(list);
-    classCalendarBoard.appendChild(card);
+    ui.classCalendarBoard.appendChild(card);
   });
 }
 
-function getAttendanceList() {
-  return state.students.filter((student) => {
-    const bySearch = student.name.toLowerCase().includes(state.search);
-    const byNucleus =
-      state.attendanceFilter === "todos" || student.nucleus === state.attendanceFilter;
-    return bySearch && byNucleus;
-  });
-}
-
-function renderAttendance() {
-  const visible = getAttendanceList();
-  attendanceBoard.innerHTML = "";
+function renderBoard(targetElement, query, filter) {
+  targetElement.innerHTML = "";
+  const visible = getFilteredStudents(query, filter);
 
   NUCLEI.forEach((nucleus) => {
-    if (state.attendanceFilter !== "todos" && state.attendanceFilter !== nucleus) {
+    if (filter !== "todos" && filter !== nucleus) {
       return;
     }
 
     const students = visible.filter((student) => student.nucleus === nucleus);
-
     const column = document.createElement("article");
     column.className = "nucleus-column";
     column.innerHTML = `
@@ -298,10 +374,9 @@ function renderAttendance() {
     }
 
     students.forEach((student) => {
-      const card = attendanceCardTemplate.content.firstElementChild.cloneNode(true);
+      const card = ui.attendanceCardTemplate.content.firstElementChild.cloneNode(true);
       card.querySelector(".student-name").textContent = student.name;
-      card.querySelector(".student-contact").textContent =
-        student.contact || "Contato não informado";
+      card.querySelector(".student-contact").textContent = student.contact || "Contato não informado";
       card.querySelector(".student-status").textContent = `Status: ${student.attendance}`;
 
       card.querySelector(".btn-present").addEventListener("click", () => {
@@ -319,24 +394,29 @@ function renderAttendance() {
       column.appendChild(card);
     });
 
-    attendanceBoard.appendChild(column);
+    targetElement.appendChild(column);
   });
 }
 
-function getUniformList() {
-  return state.students.filter(
-    (student) => state.uniformFilter === "todos" || student.nucleus === state.uniformFilter,
-  );
+function renderAttendance() {
+  renderBoard(ui.attendanceBoard, state.search, state.attendanceFilter);
+}
+
+function renderProfessorAttendance() {
+  renderBoard(ui.professorAttendanceBoard, state.professorSearch, state.professorFilter);
 }
 
 function renderUniformTable() {
-  const students = getUniformList();
-  uniformTableBody.innerHTML = "";
+  const students = state.students.filter(
+    (student) => state.uniformFilter === "todos" || student.nucleus === state.uniformFilter,
+  );
+
+  ui.uniformTableBody.innerHTML = "";
 
   if (students.length === 0) {
     const row = document.createElement("tr");
     row.innerHTML = '<td colspan="6" class="empty">Nenhum aluno para este núcleo.</td>';
-    uniformTableBody.appendChild(row);
+    ui.uniformTableBody.appendChild(row);
     return;
   }
 
@@ -381,18 +461,16 @@ function renderUniformTable() {
       renderMetrics();
     });
 
-    uniformTableBody.appendChild(row);
+    ui.uniformTableBody.appendChild(row);
   });
 }
-
 
 function getPeriodRange(period) {
   const now = new Date();
   const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
   if (period === "mensal") {
-    const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    return { start: startMonth, end, label: "Mensal" };
+    return { start: new Date(now.getFullYear(), now.getMonth(), 1), end, label: "Mensal" };
   }
 
   const startWeek = new Date(end);
@@ -416,9 +494,6 @@ function buildFullReport(period) {
   const total = state.students.length;
   const present = state.students.filter((student) => student.attendance === "presente").length;
   const absent = state.students.filter((student) => student.attendance === "falta").length;
-  const notMarked = state.students.filter(
-    (student) => student.attendance === "não registrado",
-  ).length;
   const uniformsDelivered = state.students.filter((student) => student.uniform.delivered).length;
 
   const lines = [
@@ -431,7 +506,6 @@ function buildFullReport(period) {
     `- Total de alunos cadastrados: ${total}`,
     `- Presentes (status atual): ${present}`,
     `- Faltas (status atual): ${absent}`,
-    `- Não registrados (status atual): ${notMarked}`,
     `- Uniformes entregues: ${uniformsDelivered}`,
     `- Uniformes pendentes: ${total - uniformsDelivered}`,
     "",
@@ -440,25 +514,15 @@ function buildFullReport(period) {
 
   NUCLEI.forEach((nucleus) => {
     const studentsByNucleus = state.students.filter((student) => student.nucleus === nucleus);
-    const nucleusPresent = studentsByNucleus.filter((student) => student.attendance === "presente").length;
-    const nucleusAbsent = studentsByNucleus.filter((student) => student.attendance === "falta").length;
-    const nucleusNotMarked = studentsByNucleus.filter(
-      (student) => student.attendance === "não registrado",
-    ).length;
-    const delivered = studentsByNucleus.filter((student) => student.uniform.delivered).length;
-
     const classDays = (state.classDaysByNucleus[nucleus] || []).filter(
       (date) => date >= startIso && date <= endIso,
     );
 
-    lines.push(`
-${nucleus.toUpperCase()}`);
+    lines.push(`\n${nucleus.toUpperCase()}`);
     lines.push(`- Alunos: ${studentsByNucleus.length}`);
-    lines.push(`- Presenças (status atual): ${nucleusPresent}`);
-    lines.push(`- Faltas (status atual): ${nucleusAbsent}`);
-    lines.push(`- Não registrados: ${nucleusNotMarked}`);
-    lines.push(`- Uniformes entregues: ${delivered}`);
-    lines.push(`- Uniformes pendentes: ${studentsByNucleus.length - delivered}`);
+    lines.push(`- Presentes: ${studentsByNucleus.filter((s) => s.attendance === "presente").length}`);
+    lines.push(`- Faltas: ${studentsByNucleus.filter((s) => s.attendance === "falta").length}`);
+    lines.push(`- Uniformes entregues: ${studentsByNucleus.filter((s) => s.uniform.delivered).length}`);
 
     if (classDays.length === 0) {
       lines.push("- Dias com aula no período: nenhum registro.");
@@ -470,7 +534,6 @@ ${nucleus.toUpperCase()}`);
     }
   });
 
-  lines.push("\nObservação: presenças/faltas são exibidas conforme status atual no painel.");
   return lines.join("\n");
 }
 
@@ -479,7 +542,6 @@ function downloadReport(content, period) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   const today = toIsoDate(new Date());
-
   anchor.href = url;
   anchor.download = `relatorio-${period}-${today}.txt`;
   document.body.appendChild(anchor);
@@ -489,13 +551,14 @@ function downloadReport(content, period) {
 }
 
 function renderMetrics() {
-  const total = state.students.length;
-  const present = state.students.filter((student) => student.attendance === "presente").length;
-  const absent = state.students.filter((student) => student.attendance === "falta").length;
-  const uniformDelivered = state.students.filter((student) => student.uniform.delivered).length;
-
-  document.getElementById("totalStudents").textContent = total;
-  document.getElementById("presentCount").textContent = present;
-  document.getElementById("absentCount").textContent = absent;
-  document.getElementById("uniformDelivered").textContent = uniformDelivered;
+  document.getElementById("totalStudents").textContent = state.students.length;
+  document.getElementById("presentCount").textContent = state.students.filter(
+    (student) => student.attendance === "presente",
+  ).length;
+  document.getElementById("absentCount").textContent = state.students.filter(
+    (student) => student.attendance === "falta",
+  ).length;
+  document.getElementById("uniformDelivered").textContent = state.students.filter(
+    (student) => student.uniform.delivered,
+  ).length;
 }
