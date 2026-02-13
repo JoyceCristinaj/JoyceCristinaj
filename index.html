@@ -3,157 +3,257 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CRM Propostas • Pipeline Comercial</title>
+    <title>Instituto Irmãos Nogueira • Sistema por Perfis</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="bg-decoration" aria-hidden="true"></div>
-
     <header class="hero">
-      <div class="hero-copy">
-        <p class="eyebrow">CRM Comercial</p>
-        <h1>Pipeline de Propostas</h1>
-        <p>
-          Um painel organizado para visualizar empresas que faltam contato, propostas enviadas e respostas recebidas.
-        </p>
+      <div class="brand">
+        <img src="logo-iin.svg" alt="Logo Instituto Irmãos Nogueira" class="logo" />
+        <div>
+          <p class="eyebrow">Instituto Irmãos Nogueira</p>
+          <h1>Sistema de Gestão de Núcleos</h1>
+        </div>
       </div>
-
-      <div class="stats" id="statsCards">
-        <article class="stat stat-pending">
-          <h2 id="statPending">0</h2>
-          <p>Faltam enviar</p>
-        </article>
-        <article class="stat stat-sent">
-          <h2 id="statSent">0</h2>
-          <p>Enviadas</p>
-        </article>
-        <article class="stat stat-answered">
-          <h2 id="statAnswered">0</h2>
-          <p>Respondidas</p>
-        </article>
-      </div>
+      
     </header>
 
-    <main>
-      <section class="panel form-panel">
-        <h2>Adicionar empresa</h2>
-        <form id="companyForm">
-          <label>
-            Nome da empresa
-            <input type="text" id="name" placeholder="Ex: Tech Soluções" required />
-          </label>
+    <main class="layout">
+      <section class="panel access-panel">
+        <div class="panel-title-row">
+          <h2>Acesso ao sistema</h2>
+          <button id="logoutBtn" type="button" class="ghost hidden">Sair</button>
+        </div>
 
-          <label>
-            Contato
-            <input type="text" id="contact" placeholder="Ex: Ana Silva • ana@email.com" />
-          </label>
+        <div class="access-grid">
+          <article class="access-card">
+            <h3>Professor</h3>
+            <p>Registra presença e uniforme da própria turma.</p>
+            <p>Usuário de exemplo: <strong>prof_cg</strong></p>
+            <p>Senha: não exibida por privacidade.</p>
+          </article>
+          <article class="access-card">
+            <h3>Gestão Interna</h3>
+            <p>Acompanha todas as turmas e relatórios.</p>
+            <p>Usuário de exemplo: <strong>gestao</strong></p>
+            <p>Senha: não exibida por privacidade.</p>
+          </article>
+          <article class="access-card">
+            <h3>Administrador</h3>
+            <p>Controle total, usuários e permissões.</p>
+            <p>Usuário de exemplo: <strong>admin</strong></p>
+            <p>Senha: não exibida por privacidade.</p>
+          </article>
+        </div>
 
+        <form id="loginForm" class="login-form">
           <label>
-            Local de envio
-            <select id="channel" required>
-              <option value="nao-enviado">Ainda não enviado</option>
-              <option value="linkedin">LinkedIn</option>
-              <option value="email">Email</option>
-              <option value="instagram">Instagram</option>
-            </select>
+            Usuário
+            <input id="loginUsername" type="text" required placeholder="Digite seu usuário" />
           </label>
-
           <label>
-            Status
-            <select id="status" required>
-              <option value="pendente">Falta enviar</option>
-              <option value="enviada">Proposta enviada</option>
-              <option value="respondida">Empresa respondeu</option>
-            </select>
+            Senha
+            <input id="loginPassword" type="password" required placeholder="Digite sua senha" />
           </label>
-
-          <label>
-            Observações
-            <textarea id="notes" rows="3" placeholder="Ex: pediu retorno na próxima semana"></textarea>
-          </label>
-
-          <button type="submit" class="primary-btn">Adicionar ao CRM</button>
+          <button class="primary" type="submit">Entrar</button>
         </form>
+
+        <p id="accessStatus" class="report-status">Faça login para abrir sua área. Dados do professor sincronizam automaticamente com gestão e admin.</p>
       </section>
 
-      <section class="panel board-panel">
-        <div class="board-header">
-          <h2>Quadro de acompanhamento</h2>
-          <button id="clearAll" type="button" class="ghost">Limpar tudo</button>
+      <section id="professorArea" class="panel hidden">
+        <div class="panel-title-row">
+          <h2>Área do Professor</h2>
+          <span class="badge" id="professorNucleusBadge">Turma:</span>
         </div>
 
-        <div class="board-tools">
-          <label>
-            Buscar empresa
-            <input id="searchInput" type="search" placeholder="Digite o nome da empresa" />
-          </label>
-          <label>
-            Canal
-            <select id="channelFilter">
-              <option value="todos">Todos os canais</option>
-              <option value="nao-enviado">Ainda não enviado</option>
-              <option value="linkedin">LinkedIn</option>
-              <option value="email">Email</option>
-              <option value="instagram">Instagram</option>
+        <section class="subpanel">
+          <h3>Chamada da turma</h3>
+          <div id="professorBoard" class="board-grid"></div>
+        </section>
+
+        <section class="subpanel">
+          <h3>Entrega de uniforme (própria turma)</h3>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th>Aluno</th>
+                  <th>Tamanho</th>
+                  <th>Status</th>
+                  <th>Obs.</th>
+                  <th>Ação</th>
+                </tr>
+              </thead>
+              <tbody id="professorUniformBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="subpanel">
+          <h3>Histórico da própria turma</h3>
+          <ul id="professorHistory" class="history-list"></ul>
+        </section>
+      </section>
+
+      <div id="managementArea" class="hidden role-grid">
+        <section class="panel metrics">
+          <article><h2 id="totalStudents">0</h2><p>Alunos cadastrados</p></article>
+          <article><h2 id="presentCount">0</h2><p>Presentes</p></article>
+          <article><h2 id="absentCount">0</h2><p>Faltas</p></article>
+          <article><h2 id="uniformDelivered">0</h2><p>Uniformes entregues</p></article>
+        </section>
+
+        <section class="panel controls">
+          <h2>Cadastro de alunos</h2>
+          <form id="studentForm">
+            <label>Nome <input id="studentName" type="text" required /></label>
+            <label>Turma/Núcleo
+              <select id="studentNucleus" required>
+                <option value="Campo Grande">Campo Grande</option>
+                <option value="Freguesia">Freguesia</option>
+                <option value="Jacarezinho">Jacarezinho</option>
+                <option value="Penha">Penha</option>
+                <option value="Realengo">Realengo</option>
+                <option value="Santa Cruz">Santa Cruz</option>
+              </select>
+            </label>
+            <label>Contato <input id="studentContact" type="text" /></label>
+            <button class="primary" type="submit">Adicionar aluno</button>
+          </form>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title-row"><h2>Calendário de aulas por núcleo</h2></div>
+          <form id="classCalendarForm" class="calendar-form">
+            <label>Núcleo
+              <select id="calendarNucleus" required>
+                <option value="Campo Grande">Campo Grande</option>
+                <option value="Freguesia">Freguesia</option>
+                <option value="Jacarezinho">Jacarezinho</option>
+                <option value="Penha">Penha</option>
+                <option value="Realengo">Realengo</option>
+                <option value="Santa Cruz">Santa Cruz</option>
+              </select>
+            </label>
+            <label>Dia de aula <input id="calendarDate" type="date" required /></label>
+            <button class="primary" type="submit">Registrar aula</button>
+          </form>
+          <div id="classCalendarBoard" class="calendar-grid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title-row">
+            <h2>Controle de chamadas (todas as turmas)</h2>
+            <div class="toolbar">
+              <input id="attendanceSearch" type="search" placeholder="Buscar aluno" />
+              <select id="attendanceNucleusFilter">
+                <option value="todos">Todas as turmas</option>
+                <option value="Campo Grande">Campo Grande</option>
+                <option value="Freguesia">Freguesia</option>
+                <option value="Jacarezinho">Jacarezinho</option>
+                <option value="Penha">Penha</option>
+                <option value="Realengo">Realengo</option>
+                <option value="Santa Cruz">Santa Cruz</option>
+              </select>
+            </div>
+          </div>
+          <div id="attendanceBoard" class="board-grid"></div>
+        </section>
+
+        <section class="panel">
+          <div class="panel-title-row">
+            <h2>Distribuição de uniformes</h2>
+            <select id="uniformNucleusFilter">
+              <option value="todos">Todos os núcleos</option>
+              <option value="Campo Grande">Campo Grande</option>
+              <option value="Jacarezinho">Jacarezinho</option>
+              <option value="Realengo">Realengo</option>
+              <option value="Santa Cruz">Santa Cruz</option>
+            </select>
+          </div>
+          <div class="table-wrapper">
+            <table>
+              <thead>
+                <tr><th>Aluno</th><th>Núcleo</th><th>Tam.</th><th>Status</th><th>Obs.</th><th>Ação</th><th>Excluir</th></tr>
+              </thead>
+              <tbody id="uniformTableBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Controle de estoque de uniformes</h2>
+          <div id="stockView" class="stock-grid"></div>
+        </section>
+
+        <section class="panel report-panel">
+          <div class="panel-title-row">
+            <h2>Relatório para gestor</h2>
+            <div class="report-controls">
+              <select id="reportPeriod"><option value="semanal">Semanal</option><option value="mensal">Mensal</option></select>
+              <button id="generateReportBtn" class="primary" type="button">📄 Gerar relatório completo</button>
+            </div>
+          </div>
+          <p id="reportStatus" class="report-status">Relatório para prestação de contas.</p>
+        </section>
+      </div>
+
+      <section id="adminArea" class="panel hidden">
+        <h2>Administrador • Gestão de usuários e permissões</h2>
+        <form id="userForm" class="login-form">
+          <label>Usuário <input id="newUsername" type="text" required /></label>
+          <label>Senha <input id="newPassword" type="password" required /></label>
+          <label>Perfil
+            <select id="newRole">
+              <option value="professor">Professor</option>
+              <option value="gestao">Gestão Interna</option>
+              <option value="admin">Administrador</option>
             </select>
           </label>
+          <label>Núcleo (somente professor)
+            <select id="newNucleus">
+              <option value="Campo Grande">Campo Grande</option>
+              <option value="Jacarezinho">Jacarezinho</option>
+              <option value="Realengo">Realengo</option>
+              <option value="Santa Cruz">Santa Cruz</option>
+            </select>
+          </label>
+          <button class="primary" type="submit">Criar usuário</button>
+        </form>
+
+        <div class="table-wrapper">
+          <table>
+            <thead>
+              <tr><th>Usuário</th><th>Perfil</th><th>Núcleo</th><th>Senha</th><th>Ações</th></tr>
+            </thead>
+            <tbody id="usersTableBody"></tbody>
+          </table>
         </div>
 
-        <div class="board" id="board">
-          <article class="column" data-status="pendente">
-            <header>
-              <h3>Faltam enviar</h3>
-              <span class="counter" id="count-pendente">0</span>
-            </header>
-            <div class="card-list" id="list-pendente"></div>
-          </article>
-
-          <article class="column" data-status="enviada">
-            <header>
-              <h3>Enviadas</h3>
-              <span class="counter" id="count-enviada">0</span>
-            </header>
-            <div class="card-list" id="list-enviada"></div>
-          </article>
-
-          <article class="column" data-status="respondida">
-            <header>
-              <h3>Respondidas</h3>
-              <span class="counter" id="count-respondida">0</span>
-            </header>
-            <div class="card-list" id="list-respondida"></div>
-          </article>
-        </div>
+        <h3>Ajuste manual de estoque (admin)</h3>
+        <form id="stockForm" class="login-form">
+          <label>Tamanho
+            <select id="stockSize">
+              <option>PP</option><option>P</option><option>M</option><option>G</option><option>GG</option>
+            </select>
+          </label>
+          <label>Quantidade (+/-)
+            <input id="stockDelta" type="number" value="0" />
+          </label>
+          <button class="primary" type="submit">Aplicar ajuste</button>
+        </form>
       </section>
     </main>
 
-    <template id="companyCardTemplate">
-      <article class="company-card">
-        <div class="card-top">
-          <h4 class="company-name"></h4>
-          <button type="button" class="delete-btn" title="Remover">✕</button>
-        </div>
-        <p class="company-contact"></p>
-        <p class="company-channel"></p>
-        <p class="company-notes"></p>
-        <div class="card-actions">
-          <label>
-            Mover para
-            <select class="status-select">
-              <option value="pendente">Falta enviar</option>
-              <option value="enviada">Enviada</option>
-              <option value="respondida">Respondida</option>
-            </select>
-          </label>
-          <label>
-            Enviado por
-            <select class="channel-select">
-              <option value="nao-enviado">Ainda não enviado</option>
-              <option value="linkedin">LinkedIn</option>
-              <option value="email">Email</option>
-              <option value="instagram">Instagram</option>
-            </select>
-          </label>
+    <template id="attendanceCardTemplate">
+      <article class="student-card">
+        <h4 class="student-name"></h4>
+        <p class="student-contact"></p>
+        <p class="student-status"></p>
+        <div class="card-buttons">
+          <button class="btn-present" type="button">Presente</button>
+          <button class="btn-absent" type="button">Falta</button>
         </div>
       </article>
     </template>
