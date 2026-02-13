@@ -1,4 +1,4 @@
-const STORAGE_KEY = "instituto-irmaos-nogueira-v1";
+const STORAGE_KEY = "instituto-irmaos-nogueira-v2";
 const NUCLEI = ["Campo Grande", "Jacarezinho", "Realengo", "Santa Cruz"];
 
 const studentForm = document.getElementById("studentForm");
@@ -9,14 +9,18 @@ const attendanceBoard = document.getElementById("attendanceBoard");
 const uniformTableBody = document.getElementById("uniformTableBody");
 const attendanceCardTemplate = document.getElementById("attendanceCardTemplate");
 const resetAllBtn = document.getElementById("resetAll");
+const classCalendarForm = document.getElementById("classCalendarForm");
+const classCalendarBoard = document.getElementById("classCalendarBoard");
 
 const state = {
-  students: loadStudents(),
+  students: [],
+  classDaysByNucleus: createEmptyClassDays(),
   search: "",
   attendanceFilter: "todos",
   uniformFilter: "todos",
 };
 
+loadData();
 render();
 
 studentForm.addEventListener("submit", (event) => {
@@ -46,6 +50,33 @@ studentForm.addEventListener("submit", (event) => {
   document.getElementById("studentNucleus").value = "Campo Grande";
 });
 
+classCalendarForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+
+  const nucleus = document.getElementById("calendarNucleus").value;
+  const date = document.getElementById("calendarDate").value;
+
+  if (!nucleus || !date) {
+    return;
+  }
+
+  const days = state.classDaysByNucleus[nucleus] || [];
+
+  if (days.includes(date)) {
+    window.alert("Esse dia já foi registrado para este núcleo.");
+    return;
+  }
+
+  days.push(date);
+  days.sort((a, b) => b.localeCompare(a));
+  state.classDaysByNucleus[nucleus] = days;
+
+  persist();
+  renderClassCalendar();
+  classCalendarForm.reset();
+  document.getElementById("calendarNucleus").value = "Campo Grande";
+});
+
 attendanceSearch.addEventListener("input", (event) => {
   state.search = event.target.value.toLowerCase().trim();
   renderAttendance();
@@ -62,21 +93,29 @@ uniformNucleusFilter.addEventListener("change", (event) => {
 });
 
 resetAllBtn.addEventListener("click", () => {
-  const confirmed = window.confirm("Deseja apagar todos os dados de presença e uniformes?");
+  const confirmed = window.confirm("Deseja apagar todos os dados de presença, uniformes e calendário?");
   if (!confirmed) {
     return;
   }
 
   state.students = [];
+  state.classDaysByNucleus = createEmptyClassDays();
   persist();
   render();
 });
 
-function loadStudents() {
-  const saved = localStorage.getItem(STORAGE_KEY);
+function createEmptyClassDays() {
+  return {
+    "Campo Grande": [],
+    Jacarezinho: [],
+    Realengo: [],
+    "Santa Cruz": [],
+  };
+}
 
-  if (!saved) {
-    return [
+function createDefaultData() {
+  return {
+    students: [
       {
         id: crypto.randomUUID(),
         name: "Ana Beatriz",
@@ -93,12 +132,30 @@ function loadStudents() {
         attendance: "falta",
         uniform: { size: "G", delivered: false, notes: "Aguardando reposição." },
       },
-    ];
+    ],
+    classDaysByNucleus: {
+      "Campo Grande": ["2026-02-10", "2026-02-08"],
+      Jacarezinho: ["2026-02-11"],
+      Realengo: ["2026-02-09"],
+      "Santa Cruz": [],
+    },
+  };
+}
+
+function loadData() {
+  const saved = localStorage.getItem(STORAGE_KEY);
+
+  if (!saved) {
+    const defaults = createDefaultData();
+    state.students = defaults.students;
+    state.classDaysByNucleus = defaults.classDaysByNucleus;
+    return;
   }
 
   try {
     const parsed = JSON.parse(saved);
-    return parsed.map((student) => ({
+
+    state.students = (parsed.students || []).map((student) => ({
       ...student,
       nucleus: NUCLEI.includes(student.nucleus) ? student.nucleus : "Campo Grande",
       attendance: ["presente", "falta", "não registrado"].includes(student.attendance)
@@ -110,19 +167,86 @@ function loadStudents() {
         notes: student.uniform?.notes || "",
       },
     }));
+
+    const loadedCalendar = createEmptyClassDays();
+    NUCLEI.forEach((nucleus) => {
+      const days = parsed.classDaysByNucleus?.[nucleus] || [];
+      loadedCalendar[nucleus] = days
+        .filter((date) => /^\d{4}-\d{2}-\d{2}$/.test(date))
+        .sort((a, b) => b.localeCompare(a));
+    });
+    state.classDaysByNucleus = loadedCalendar;
   } catch {
-    return [];
+    state.students = [];
+    state.classDaysByNucleus = createEmptyClassDays();
   }
 }
 
 function persist() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state.students));
+  const payload = {
+    students: state.students,
+    classDaysByNucleus: state.classDaysByNucleus,
+  };
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
 }
 
 function render() {
+  renderClassCalendar();
   renderAttendance();
   renderUniformTable();
   renderMetrics();
+}
+
+function renderClassCalendar() {
+  classCalendarBoard.innerHTML = "";
+
+  NUCLEI.forEach((nucleus) => {
+    const card = document.createElement("article");
+    card.className = "calendar-card";
+
+    const days = state.classDaysByNucleus[nucleus] || [];
+
+    card.innerHTML = `
+      <div class="calendar-header">
+        <h3>${nucleus}</h3>
+        <span class="badge">${days.length} aulas</span>
+      </div>
+    `;
+
+    if (days.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "empty";
+      empty.textContent = "Sem aula registrada ainda.";
+      card.appendChild(empty);
+    }
+
+    const list = document.createElement("ul");
+    list.className = "calendar-list";
+
+    days.forEach((date) => {
+      const item = document.createElement("li");
+      item.className = "calendar-item";
+
+      const readable = new Date(`${date}T00:00:00`).toLocaleDateString("pt-BR");
+      item.innerHTML = `
+        <span>${readable}</span>
+        <button class="ghost tiny-btn" type="button">Remover</button>
+      `;
+
+      item.querySelector("button").addEventListener("click", () => {
+        state.classDaysByNucleus[nucleus] = (state.classDaysByNucleus[nucleus] || []).filter(
+          (day) => day !== date,
+        );
+        persist();
+        renderClassCalendar();
+      });
+
+      list.appendChild(item);
+    });
+
+    card.appendChild(list);
+    classCalendarBoard.appendChild(card);
+  });
 }
 
 function getAttendanceList() {

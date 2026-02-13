@@ -67,6 +67,29 @@
         </form>
       </section>
 
+      <section class="panel class-calendar-panel">
+        <div class="panel-title-row">
+          <h2>Calendário de aulas por núcleo</h2>
+        </div>
+        <form id="classCalendarForm" class="calendar-form">
+          <label>
+            Núcleo
+            <select id="calendarNucleus" required>
+              <option value="Campo Grande">Campo Grande</option>
+              <option value="Jacarezinho">Jacarezinho</option>
+              <option value="Realengo">Realengo</option>
+              <option value="Santa Cruz">Santa Cruz</option>
+            </select>
+          </label>
+          <label>
+            Dia de aula
+            <input id="calendarDate" type="date" required />
+          </label>
+          <button class="primary" type="submit">Registrar aula</button>
+        </form>
+        <div id="classCalendarBoard" class="calendar-grid"></div>
+      </section>
+
       <section class="panel attendance-panel">
         <div class="panel-title-row">
           <h2>Controle de chamadas</h2>
