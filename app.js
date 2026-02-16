@@ -105,17 +105,17 @@ function bindEvents() {
 
   ui.attendanceSearch.addEventListener("input", (event) => {
     state.search = event.target.value.trim().toLowerCase();
-    renderManagementAttendance();
+    renderManagementAttendance(currentUser());
   });
 
   ui.attendanceNucleusFilter.addEventListener("change", (event) => {
     state.attendanceFilter = event.target.value;
-    renderManagementAttendance();
+    renderManagementAttendance(currentUser());
   });
 
   ui.uniformNucleusFilter.addEventListener("change", (event) => {
     state.uniformFilter = event.target.value;
-    renderManagementUniform();
+    renderManagementUniform(currentUser());
   });
 
   ui.generateReportBtn.addEventListener("click", () => {
@@ -343,7 +343,8 @@ function onAddClassDay(event) {
 
 function renderBoard(target, students, actor) {
   target.innerHTML = "";
-  const nuclei = actor.role === "professor" ? [actor.nucleus] : NUCLEI;
+  const effectiveActor = actor || currentUser() || { role: "gestao", nucleus: null, username: "sistema" };
+  const nuclei = effectiveActor.role === "professor" ? [effectiveActor.nucleus] : NUCLEI;
 
   nuclei.forEach((nucleus) => {
     const grouped = students.filter((student) => student.nucleus === nucleus);
@@ -366,14 +367,14 @@ function renderBoard(target, students, actor) {
 
       card.querySelector(".btn-present").addEventListener("click", () => {
         student.attendance = "presente";
-        pushHistory(student, actor, "chamada", "Marcado como presente");
+        pushHistory(student, effectiveActor, "chamada", "Marcado como presente");
         persist();
         render();
       });
 
       card.querySelector(".btn-absent").addEventListener("click", () => {
         student.attendance = "falta";
-        pushHistory(student, actor, "chamada", "Marcado como falta");
+        pushHistory(student, effectiveActor, "chamada", "Marcado como falta");
         persist();
         render();
       });
@@ -466,7 +467,7 @@ function renderClassDays() {
   });
 }
 
-function renderManagementAttendance(user) {
+function renderManagementAttendance(user = currentUser()) {
   const filtered = state.students.filter((student) => {
     const byName = student.name.toLowerCase().includes(state.search);
     const byNucleus = state.attendanceFilter === "todos" || student.nucleus === state.attendanceFilter;
@@ -476,7 +477,8 @@ function renderManagementAttendance(user) {
   renderBoard(ui.attendanceBoard, filtered, user);
 }
 
-function renderManagementUniform(user) {
+function renderManagementUniform(user = currentUser()) {
+  if (!user) return;
   const canDelete = user.role === "admin";
   const students = state.students.filter(
     (student) => state.uniformFilter === "todos" || student.nucleus === state.uniformFilter,
@@ -631,7 +633,7 @@ function onAdjustStock(event) {
   const delta = Number(document.getElementById("stockDelta").value || 0);
   state.uniformStock[size] = Math.max(0, (state.uniformStock[size] || 0) + delta);
   persist();
-  renderStock();
+  render();
 }
 
 function getPeriodRange(period) {
