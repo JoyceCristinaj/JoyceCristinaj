@@ -93,8 +93,10 @@
               <label>Núcleo
                 <select id="calendarNucleus" required></select>
               </label>
-              <label>Dia de aula <input id="calendarDate" type="date" required /></label>
-              <button class="primary" type="submit">Registrar aula</button>
+              <label>Dia de aula <input id="calendarDate" type="date" /></label>
+              <label>Horário início <input id="calendarStartTime" type="time" /></label>
+              <label>Horário fim <input id="calendarEndTime" type="time" /></label>
+              <button class="primary" type="submit">Salvar aula / horário</button>
             </form>
             <div id="classCalendarBoard" class="calendar-grid"></div>
           </section>
@@ -145,6 +147,8 @@
                 <select id="reportPeriod">
                   <option value="semanal">Semanal</option>
                   <option value="mensal">Mensal</option>
+                  <option value="semestral">Semestral</option>
+                  <option value="anual">Anual</option>
                 </select>
                 <button id="generateReportBtn" class="primary" type="button">📄 Gerar relatório</button>
               </div>
