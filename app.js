@@ -142,6 +142,27 @@ function createDefaultUsers() {
   ];
 }
 
+
+function ensureRequiredUsers() {
+  const required = createDefaultUsers();
+
+  required.forEach((baseUser) => {
+    const index = state.users.findIndex((user) => user.username === baseUser.username);
+
+    if (index === -1) {
+      state.users.push(baseUser);
+      return;
+    }
+
+    state.users[index] = {
+      ...state.users[index],
+      role: baseUser.role,
+      nucleus: baseUser.nucleus,
+      password: baseUser.password,
+    };
+  });
+}
+
 function createDefaultStudents() {
   return [
     {
@@ -171,6 +192,7 @@ function loadData() {
   const saved = localStorage.getItem(STORAGE_KEY);
   if (!saved) {
     state.users = createDefaultUsers();
+    ensureRequiredUsers();
     state.students = createDefaultStudents();
     state.classDaysByNucleus = createEmptyCalendar();
     persist();
@@ -180,12 +202,14 @@ function loadData() {
   try {
     const parsed = JSON.parse(saved);
     state.users = parsed.users || createDefaultUsers();
+    ensureRequiredUsers();
     state.students = parsed.students || createDefaultStudents();
     state.history = parsed.history || [];
     state.uniformStock = parsed.uniformStock || state.uniformStock;
     state.classDaysByNucleus = parsed.classDaysByNucleus || createEmptyCalendar();
   } catch {
     state.users = createDefaultUsers();
+    ensureRequiredUsers();
     state.students = createDefaultStudents();
     state.classDaysByNucleus = createEmptyCalendar();
   }
@@ -223,11 +247,11 @@ function currentUser() {
 function onLogin(event) {
   event.preventDefault();
   const username = ui.loginUsername.value.trim();
-  const password = ui.loginPassword.value;
+  const password = ui.loginPassword.value.trim();
   const user = state.users.find((item) => item.username === username && item.password === password);
 
   if (!user) {
-    ui.loginMessage.textContent = "Usuário ou senha inválidos.";
+    ui.loginMessage.textContent = "Usuário ou senha inválidos. Tente: prof_cg/prof123, gestao/iin@2026 ou admin/admin@2026.";
     return;
   }
 
