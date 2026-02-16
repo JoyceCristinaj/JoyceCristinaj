@@ -83,6 +83,7 @@ const ui = {
   stockForm: document.getElementById("stockForm"),
   newRole: document.getElementById("newRole"),
   attendanceCardTemplate: document.getElementById("attendanceCardTemplate"),
+  professorClassDate: document.getElementById("professorClassDate"),
   professorClassProfessor: document.getElementById("professorClassProfessor"),
   professorClassMonitor: document.getElementById("professorClassMonitor"),
   professorClassProfessorName: document.getElementById("professorClassProfessorName"),
@@ -90,6 +91,7 @@ const ui = {
   professorClassSave: document.getElementById("professorClassSave"),
   professorClassStatus: document.getElementById("professorClassStatus"),
   attendanceClassProfessor: document.getElementById("attendanceClassProfessor"),
+  attendanceClassDate: document.getElementById("attendanceClassDate"),
   attendanceClassMonitor: document.getElementById("attendanceClassMonitor"),
   attendanceClassProfessorName: document.getElementById("attendanceClassProfessorName"),
   attendanceClassMonitorName: document.getElementById("attendanceClassMonitorName"),
@@ -426,6 +428,7 @@ function createEmptyAttendanceStaff() {
     NUCLEI.map((nucleus) => [
       nucleus,
       {
+        classDate: "",
         professorId: "",
         monitorId: "",
         professorName: "",
@@ -619,7 +622,7 @@ function getProjectAttendanceStaff(projectKey = state.currentProjectKey) {
 function getAttendanceStaffByNucleus(nucleus) {
   const attendanceStaff = getProjectAttendanceStaff();
   if (!attendanceStaff[nucleus]) {
-    attendanceStaff[nucleus] = { professorId: "", monitorId: "", professorName: "", monitorName: "" };
+    attendanceStaff[nucleus] = { classDate: "", professorId: "", monitorId: "", professorName: "", monitorName: "" };
   }
   return attendanceStaff[nucleus];
 }
@@ -627,16 +630,18 @@ function getAttendanceStaffByNucleus(nucleus) {
 function renderClassStaffPanel(nucleus, panelType) {
   const isProfessorPanel = panelType === "professor";
   const professorSelect = isProfessorPanel ? ui.professorClassProfessor : ui.attendanceClassProfessor;
+  const classDateInput = isProfessorPanel ? ui.professorClassDate : ui.attendanceClassDate;
   const monitorSelect = isProfessorPanel ? ui.professorClassMonitor : ui.attendanceClassMonitor;
   const professorNameInput = isProfessorPanel ? ui.professorClassProfessorName : ui.attendanceClassProfessorName;
   const monitorNameInput = isProfessorPanel ? ui.professorClassMonitorName : ui.attendanceClassMonitorName;
   const statusEl = isProfessorPanel ? ui.professorClassStatus : ui.attendanceClassStatus;
 
-  if (!professorSelect || !monitorSelect || !professorNameInput || !monitorNameInput || !statusEl) return;
+  if (!professorSelect || !monitorSelect || !classDateInput || !professorNameInput || !monitorNameInput || !statusEl) return;
 
   if (!nucleus || nucleus === "todos") {
     professorSelect.innerHTML = '<option value="">Selecione um núcleo</option>';
     monitorSelect.innerHTML = '<option value="">Selecione um núcleo</option>';
+    classDateInput.value = "";
     professorNameInput.value = "";
     monitorNameInput.value = "";
     statusEl.textContent = "Selecione um núcleo para preencher professor e monitor da aula.";
@@ -658,6 +663,7 @@ function renderClassStaffPanel(nucleus, panelType) {
 
   fillSelect(professorSelect, staff.professorId, "Selecione o professor");
   fillSelect(monitorSelect, staff.monitorId, "Selecione o monitor");
+  classDateInput.value = staff.classDate || "";
   professorNameInput.value = staff.professorName || "";
   monitorNameInput.value = staff.monitorName || "";
   statusEl.textContent = `Chamada do núcleo ${nucleus}: preencha professor e monitor e clique em salvar.`;
@@ -666,6 +672,7 @@ function renderClassStaffPanel(nucleus, panelType) {
 function saveAttendanceStaff(nucleus, panelType) {
   const isProfessorPanel = panelType === "professor";
   const professorSelect = isProfessorPanel ? ui.professorClassProfessor : ui.attendanceClassProfessor;
+  const classDateInput = isProfessorPanel ? ui.professorClassDate : ui.attendanceClassDate;
   const monitorSelect = isProfessorPanel ? ui.professorClassMonitor : ui.attendanceClassMonitor;
   const professorNameInput = isProfessorPanel ? ui.professorClassProfessorName : ui.attendanceClassProfessorName;
   const monitorNameInput = isProfessorPanel ? ui.professorClassMonitorName : ui.attendanceClassMonitorName;
@@ -674,6 +681,7 @@ function saveAttendanceStaff(nucleus, panelType) {
   if (!nucleus || nucleus === "todos") return;
 
   const record = getAttendanceStaffByNucleus(nucleus);
+  record.classDate = classDateInput?.value || "";
   record.professorId = professorSelect?.value || "";
   record.monitorId = monitorSelect?.value || "";
   record.professorName = professorNameInput?.value.trim() || "";
@@ -786,9 +794,15 @@ function renderBoard(target, students, actor) {
   const nuclei = effectiveActor.role === "professor" ? [effectiveActor.nucleus] : getVisibleNuclei();
   nuclei.forEach((nucleus) => {
     const grouped = students.filter((student) => student.nucleus === nucleus);
+    const classStaff = getAttendanceStaffByNucleus(nucleus);
+    const classDateLabel = classStaff.classDate
+      ? new Date(`${classStaff.classDate}T00:00:00`).toLocaleDateString("pt-BR")
+      : "não definida";
+    const instructorLabel = classStaff.professorName || "não informado";
+    const monitorLabel = classStaff.monitorName || "não informado";
     const column = document.createElement("article");
     column.className = "nucleus-column";
-    column.innerHTML = `<div class="nucleus-header"><h3>${nucleus}</h3><span class="badge">${grouped.length}</span></div>`;
+    column.innerHTML = `<div class="nucleus-header"><h3>${nucleus}</h3><span class="badge">${grouped.length}</span></div><p class="class-meta">Data da aula: ${classDateLabel} • Instrutor: ${instructorLabel} • Monitor: ${monitorLabel}</p>`;
     if (!grouped.length) {
       const empty = document.createElement("p");
       empty.className = "empty";
@@ -799,6 +813,8 @@ function renderBoard(target, students, actor) {
       const card = ui.attendanceCardTemplate.content.firstElementChild.cloneNode(true);
       card.querySelector(".student-name").textContent = student.name;
       card.querySelector(".student-contact").textContent = student.contact || "Contato não informado";
+      const schedule = student.classSchedule || "horário não informado";
+      card.querySelector(".student-class-info").textContent = `Turma/Horário: ${student.nucleus} • ${schedule}`;
       card.querySelector(".student-status").textContent = `Status: ${student.attendance}`;
       card.querySelector(".btn-present").addEventListener("click", () => {
         student.attendance = "presente";
@@ -809,6 +825,12 @@ function renderBoard(target, students, actor) {
       card.querySelector(".btn-absent").addEventListener("click", () => {
         student.attendance = "falta";
         pushHistory(student, effectiveActor, "chamada", "Marcado como falta");
+        persist();
+        render();
+      });
+      card.querySelector(".btn-justified").addEventListener("click", () => {
+        student.attendance = "justificado";
+        pushHistory(student, effectiveActor, "chamada", "Marcado como justificado");
         persist();
         render();
       });
@@ -1121,7 +1143,7 @@ function buildReport(period) {
     lines.push(`TURMA/NÚCLEO: ${nucleus}`);
     lines.push(`Horários da turma: ${formatSchedules(nucleusData.schedules)}`);
     lines.push(`Dias com aula no período: ${days.length ? days.map(formatDateLabel).join(", ") : "nenhum"}`);
-    lines.push(`Resumo da turma: ${students.length} alunos | ${students.filter((s) => s.attendance === "presente").length} presentes | ${students.filter((s) => s.attendance === "falta").length} faltas | ${students.filter((s) => isKitDelivered(s)).length} kits entregues`);
+    lines.push(`Resumo da turma: ${students.length} alunos | ${students.filter((s) => s.attendance === "presente").length} presentes | ${students.filter((s) => s.attendance === "falta").length} faltas | ${students.filter((s) => s.attendance === "justificado").length} justificados | ${students.filter((s) => isKitDelivered(s)).length} kits entregues`);
     lines.push("Alunos:");
     if (!students.length) {
       lines.push("- Nenhum aluno cadastrado nesta turma.");

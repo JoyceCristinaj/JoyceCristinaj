@@ -56,6 +56,9 @@
           <section class="staff-panel">
             <h4>Professor e monitor da aula</h4>
             <div class="grid-form">
+              <label>Data da aula
+                <input id="professorClassDate" type="date" />
+              </label>
               <label>Professor (lista)
                 <select id="professorClassProfessor"></select>
               </label>
@@ -162,6 +165,9 @@
             <section class="staff-panel">
               <h4>Professor e monitor da aula (núcleo selecionado)</h4>
               <div class="grid-form">
+                <label>Data da aula
+                  <input id="attendanceClassDate" type="date" />
+                </label>
                 <label>Professor (lista)
                   <select id="attendanceClassProfessor"></select>
                 </label>
@@ -281,10 +287,12 @@
       <article class="student-card">
         <h4 class="student-name"></h4>
         <p class="student-contact"></p>
+        <p class="student-class-info"></p>
         <p class="student-status"></p>
         <div class="card-buttons">
           <button class="btn-present" type="button">Presente</button>
           <button class="btn-absent" type="button">Falta</button>
+          <button class="btn-justified" type="button">Justificado</button>
         </div>
       </article>
     </template>

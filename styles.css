@@ -209,6 +209,13 @@ button {
   color: var(--muted);
 }
 
+.student-class-info,
+.class-meta {
+  margin: 0.28rem 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+}
+
 .card-buttons {
   display: flex;
   gap: 0.4rem;
@@ -227,6 +234,13 @@ button {
 
 .btn-absent {
   background: var(--absent);
+}
+
+.btn-justified {
+  background: #3b4f9f;
+  color: #fff;
+  flex: 1;
+  padding: 0.42rem;
 }
 
 .toolbar {
