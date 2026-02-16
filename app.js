@@ -35,8 +35,8 @@ const ui = {
   studentForm: document.getElementById("studentForm"),
   classCalendarForm: document.getElementById("classCalendarForm"),
   classCalendarBoard: document.getElementById("classCalendarBoard"),
-  calendarStartTime: document.getElementById("calendarStartTime"),
-  calendarEndTime: document.getElementById("calendarEndTime"),
+  calendarStartTimes: Array.from({ length: 6 }, (_, index) => document.getElementById(`calendarStartTime${index + 1}`)),
+  calendarEndTimes: Array.from({ length: 6 }, (_, index) => document.getElementById(`calendarEndTime${index + 1}`)),
   attendanceSearch: document.getElementById("attendanceSearch"),
   attendanceNucleusFilter: document.getElementById("attendanceNucleusFilter"),
   attendanceBoard: document.getElementById("attendanceBoard"),
@@ -164,7 +164,7 @@ function createEmptyCalendar() {
       nucleus,
       {
         days: [],
-        schedule: { start: "", end: "" },
+        schedules: [],
       },
     ]),
   );
@@ -182,10 +182,16 @@ function normalizeCalendar(rawCalendar) {
     }
     const days = Array.isArray(value.days) ? value.days : [];
     normalized[nucleus].days = [...new Set(days)].sort((a, b) => b.localeCompare(a));
-    normalized[nucleus].schedule = {
-      start: value.schedule?.start || "",
-      end: value.schedule?.end || "",
-    };
+    if (Array.isArray(value.schedules)) {
+      normalized[nucleus].schedules = value.schedules
+        .filter((slot) => slot && slot.start && slot.end)
+        .slice(0, 6)
+        .map((slot) => ({ start: slot.start, end: slot.end }));
+      return;
+    }
+    if (value.schedule?.start && value.schedule?.end) {
+      normalized[nucleus].schedules = [{ start: value.schedule.start, end: value.schedule.end }];
+    }
   });
   return normalized;
 }
@@ -330,10 +336,9 @@ function onAddClassDay(event) {
   if (!user || (user.role !== "gestao" && user.role !== "admin")) return;
   const nucleus = document.getElementById("calendarNucleus").value;
   const date = document.getElementById("calendarDate").value;
-  const startTime = ui.calendarStartTime?.value || "";
-  const endTime = ui.calendarEndTime?.value || "";
+  const schedules = getSchedulesFromForm();
   if (!nucleus) return;
-  const nucleusData = state.classDaysByNucleus[nucleus] || { days: [], schedule: { start: "", end: "" } };
+  const nucleusData = state.classDaysByNucleus[nucleus] || { days: [], schedules: [] };
   state.classDaysByNucleus[nucleus] = nucleusData;
   let changed = false;
   if (date && !nucleusData.days.includes(date)) {
@@ -341,11 +346,8 @@ function onAddClassDay(event) {
     nucleusData.days.sort((a, b) => b.localeCompare(a));
     changed = true;
   }
-  if (startTime || endTime) {
-    nucleusData.schedule = {
-      start: startTime,
-      end: endTime,
-    };
+  if (schedules.length) {
+    nucleusData.schedules = schedules;
     changed = true;
   }
   if (!changed) return;
@@ -439,12 +441,12 @@ function renderMetrics() {
 function renderClassDays() {
   ui.classCalendarBoard.innerHTML = "";
   NUCLEI.forEach((nucleus) => {
-    const nucleusData = state.classDaysByNucleus[nucleus] || { days: [], schedule: { start: "", end: "" } };
+    const nucleusData = state.classDaysByNucleus[nucleus] || { days: [], schedules: [] };
     const days = nucleusData.days || [];
     const card = document.createElement("article");
     card.className = "calendar-card";
-    const scheduleLabel = formatSchedule(nucleusData.schedule);
-    card.innerHTML = `<div class="calendar-header"><h3>${nucleus}</h3><span class="badge">${days.length} aulas</span></div><p>Horário: ${scheduleLabel}</p>`;
+    const schedulesLabel = formatSchedules(nucleusData.schedules);
+    card.innerHTML = `<div class="calendar-header"><h3>${nucleus}</h3><span class="badge">${days.length} aulas</span></div><p>Horários: ${schedulesLabel}</p>`;
     if (!days.length) {
       card.innerHTML += '<p class="empty">Sem aulas registradas.</p>';
     } else {
@@ -625,14 +627,21 @@ function toIsoDate(date) {
 function formatDateLabel(isoDate) {
   return new Date(`${isoDate}T00:00:00`).toLocaleDateString("pt-BR");
 }
-function formatSchedule(schedule) {
-  if (!schedule || (!schedule.start && !schedule.end)) {
-    return "não definido";
+function getSchedulesFromForm() {
+  const slots = [];
+  for (let index = 0; index < 6; index += 1) {
+    const start = ui.calendarStartTimes[index]?.value || "";
+    const end = ui.calendarEndTimes[index]?.value || "";
+    if (!start || !end) continue;
+    slots.push({ start, end });
   }
-  if (schedule.start && schedule.end) {
-    return `${schedule.start} às ${schedule.end}`;
+  return slots;
+}
+function formatSchedules(schedules = []) {
+  if (!Array.isArray(schedules) || !schedules.length) {
+    return "não definidos";
   }
-  return schedule.start || schedule.end;
+  return schedules.map((slot, index) => `${index + 1}) ${slot.start} às ${slot.end}`).join(" • ");
 }
 function buildReport(period) {
   const { start, end, label } = getPeriodRange(period);
@@ -650,10 +659,10 @@ function buildReport(period) {
     const students = state.students
       .filter((student) => student.nucleus === nucleus)
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-    const nucleusData = state.classDaysByNucleus[nucleus] || { days: [], schedule: { start: "", end: "" } };
+    const nucleusData = state.classDaysByNucleus[nucleus] || { days: [], schedules: [] };
     const days = (nucleusData.days || []).filter((day) => day >= startIso && day <= endIso);
     lines.push(`TURMA/NÚCLEO: ${nucleus}`);
-    lines.push(`Horário da turma: ${formatSchedule(nucleusData.schedule)}`);
+    lines.push(`Horários da turma: ${formatSchedules(nucleusData.schedules)}`);
     lines.push(`Dias com aula no período: ${days.length ? days.map(formatDateLabel).join(", ") : "nenhum"}`);
     lines.push(`Resumo da turma: ${students.length} alunos | ${students.filter((s) => s.attendance === "presente").length} presentes | ${students.filter((s) => s.attendance === "falta").length} faltas | ${students.filter((s) => s.uniform.delivered).length} uniformes entregues`);
     lines.push("Alunos:");
@@ -662,7 +671,7 @@ function buildReport(period) {
     } else {
       students.forEach((student) => {
         const attendanceDate = generatedAt.toLocaleDateString("pt-BR");
-        lines.push(`- Nome completo: ${student.name} | Data: ${attendanceDate} | Presença: ${student.attendance} | Uniforme: ${student.uniform.delivered ? "Entregue" : "Pendente"} (${student.uniform.size || "Sem tamanho"})`);
+        lines.push(`- Nome completo: ${student.name} | Data do relatório: ${attendanceDate} | Presença: ${student.attendance} | Uniforme: ${student.uniform.delivered ? "Entregue" : "Pendente"} (${student.uniform.size || "Sem tamanho"})`);
       });
     }
     lines.push("");

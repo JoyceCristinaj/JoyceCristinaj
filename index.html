@@ -94,9 +94,26 @@
                 <select id="calendarNucleus" required></select>
               </label>
               <label>Dia de aula <input id="calendarDate" type="date" /></label>
-              <label>Horário início <input id="calendarStartTime" type="time" /></label>
-              <label>Horário fim <input id="calendarEndTime" type="time" /></label>
-              <button class="primary" type="submit">Salvar aula / horário</button>
+
+              <div>
+                <p>Horários da turma (máximo 6 faixas por núcleo)</p>
+                <div class="grid-form">
+                  <label>Horário 1 (início) <input id="calendarStartTime1" type="time" /></label>
+                  <label>Horário 1 (fim) <input id="calendarEndTime1" type="time" /></label>
+                  <label>Horário 2 (início) <input id="calendarStartTime2" type="time" /></label>
+                  <label>Horário 2 (fim) <input id="calendarEndTime2" type="time" /></label>
+                  <label>Horário 3 (início) <input id="calendarStartTime3" type="time" /></label>
+                  <label>Horário 3 (fim) <input id="calendarEndTime3" type="time" /></label>
+                  <label>Horário 4 (início) <input id="calendarStartTime4" type="time" /></label>
+                  <label>Horário 4 (fim) <input id="calendarEndTime4" type="time" /></label>
+                  <label>Horário 5 (início) <input id="calendarStartTime5" type="time" /></label>
+                  <label>Horário 5 (fim) <input id="calendarEndTime5" type="time" /></label>
+                  <label>Horário 6 (início) <input id="calendarStartTime6" type="time" /></label>
+                  <label>Horário 6 (fim) <input id="calendarEndTime6" type="time" /></label>
+                </div>
+              </div>
+
+              <button class="primary" type="submit">Salvar aula / horários</button>
             </form>
             <div id="classCalendarBoard" class="calendar-grid"></div>
           </section>
