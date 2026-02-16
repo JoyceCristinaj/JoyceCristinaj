@@ -93,6 +93,7 @@
             <h2>Cadastro de alunos</h2>
             <form id="studentForm" class="grid-form">
               <label>Nome <input id="studentName" type="text" required /></label>
+              <label>Data de nascimento <input id="studentBirthDate" type="date" /></label>
               <label>Turma/Núcleo
                 <select id="studentNucleus" required></select>
               </label>
@@ -187,6 +188,7 @@
                   <option value="anual">Anual</option>
                 </select>
                 <button id="generateReportBtn" class="primary" type="button">📄 Gerar relatório</button>
+                <button id="printReportBtn" class="ghost" type="button">🖨️ Imprimir relatório</button>
               </div>
             </div>
             <p id="reportStatus" class="report-status">Relatório para prestação de contas.</p>

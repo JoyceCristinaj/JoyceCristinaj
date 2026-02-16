@@ -76,6 +76,7 @@ const ui = {
   stockView: document.getElementById("stockView"),
   reportPeriod: document.getElementById("reportPeriod"),
   generateReportBtn: document.getElementById("generateReportBtn"),
+  printReportBtn: document.getElementById("printReportBtn"),
   reportStatus: document.getElementById("reportStatus"),
   adminArea: document.getElementById("adminArea"),
   userForm: document.getElementById("userForm"),
@@ -314,6 +315,10 @@ function bindEvents() {
     styleReportStatus(period);
     ui.reportStatus.textContent = `Relatório ${period} gerado em ${new Date().toLocaleString("pt-BR")}.`;
   });
+  ui.printReportBtn?.addEventListener("click", () => {
+    const period = ui.reportPeriod.value;
+    printReport(period);
+  });
   ui.userForm.addEventListener("submit", onCreateUser);
   ui.stockForm.addEventListener("submit", onAdjustStock);
   ui.loginProject.addEventListener("change", (event) => {
@@ -372,6 +377,7 @@ function normalizeStudentRecord(student) {
     ...student,
     project,
     classSchedule: student.classSchedule || "",
+    birthDate: student.birthDate || "",
     modality,
     uniform: {
       notes: student.uniform?.notes || "",
@@ -726,6 +732,7 @@ function onAddStudent(event) {
     modality,
     uniform: { notes: "", items: createEmptyDeliveryItems() },
     classSchedule: schedule,
+    birthDate: document.getElementById("studentBirthDate")?.value || "",
     project: state.currentProjectKey,
   });
   persist();
@@ -913,6 +920,7 @@ function renderManagementAttendance(user = currentUser()) {
     const present = students.filter((s) => s.attendance === "presente").length;
     const absent = students.filter((s) => s.attendance === "falta").length;
     const justified = students.filter((s) => s.attendance === "justificado").length;
+    const presencePercentage = students.length ? Math.round((present / students.length) * 100) : 0;
 
     const card = document.createElement("article");
     card.className = "calendar-card";
@@ -923,14 +931,14 @@ function renderManagementAttendance(user = currentUser()) {
       <p><strong>Professor:</strong> ${professorLabel}</p>
       <p><strong>Monitor:</strong> ${monitorLabel}</p>
       <p><strong>Total de alunos matriculados na turma:</strong> ${enrolled}</p>
-      <p><strong>Resumo:</strong> ${present} presentes • ${absent} faltas • ${justified} justificados</p>
+      <p><strong>Resumo:</strong> ${present} presentes • ${absent} faltas • ${justified} justificados • ${presencePercentage}% de presença</p>
       <div class="table-wrapper">
         <table>
           <thead>
             <tr><th>Aluno</th><th>Status</th></tr>
           </thead>
           <tbody>
-            ${students.map((s) => `<tr><td>${s.name}</td><td>${s.attendance}</td></tr>`).join("") || '<tr><td colspan="2" class="empty">Sem alunos.</td></tr>'}
+            ${students.map((s) => `<tr><td>${s.name}</td><td>${attendanceCode(s.attendance)}</td></tr>`).join("") || '<tr><td colspan="2" class="empty">Sem alunos.</td></tr>'}
           </tbody>
         </table>
       </div>
@@ -1165,19 +1173,97 @@ function buildReport(period) {
     lines.push(`Dados da chamada: Data da aula ${classDateLabel} | Turma ${classScheduleLabel} | Professor ${instructorLabel} | Monitor ${monitorLabel}`);
     lines.push(`Horários da turma: ${formatSchedules(nucleusData.schedules)}`);
     lines.push(`Dias com aula no período: ${days.length ? days.map(formatDateLabel).join(", ") : "nenhum"}`);
-    lines.push(`Resumo da turma: ${students.length} alunos | ${students.filter((s) => s.attendance === "presente").length} presentes | ${students.filter((s) => s.attendance === "falta").length} faltas | ${students.filter((s) => s.attendance === "justificado").length} justificados | ${students.filter((s) => isKitDelivered(s)).length} kits entregues`);
+    const present = students.filter((s) => s.attendance === "presente").length;
+    const absent = students.filter((s) => s.attendance === "falta").length;
+    const justified = students.filter((s) => s.attendance === "justificado").length;
+    const presencePercentage = students.length ? Math.round((present / students.length) * 100) : 0;
+    lines.push(`Resumo da turma: ${students.length} alunos | ${present} presentes | ${absent} faltas | ${justified} justificados | ${presencePercentage}% de presença | ${students.filter((s) => isKitDelivered(s)).length} kits entregues`);
     lines.push("Alunos:");
     if (!students.length) {
       lines.push("- Nenhum aluno cadastrado nesta turma.");
     } else {
       students.forEach((student) => {
         const attendanceDate = generatedAt.toLocaleDateString("pt-BR");
-        lines.push(`- Nome completo: ${student.name} | Data do relatório: ${attendanceDate} | Horário matriculado: ${student.classSchedule || "não informado"} | Modalidade: ${student.modality || "não informada"} | Itens do kit: ${formatAllowedItems(student.modality)} | Presença: ${student.attendance} | Kit: ${isKitDelivered(student) ? "Entregue" : "Parcial/Pendente"}`);
+        const birthDateLabel = student.birthDate ? formatDateLabel(student.birthDate) : "não informada";
+        lines.push(`- Nome completo: ${student.name} | Data de nascimento: ${birthDateLabel} | Data do relatório: ${attendanceDate} | Horário matriculado: ${student.classSchedule || "não informado"} | Modalidade: ${student.modality || "não informada"} | Itens do kit: ${formatAllowedItems(student.modality)} | Presença: ${attendanceCode(student.attendance)} | Kit: ${isKitDelivered(student) ? "Entregue" : "Parcial/Pendente"}`);
       });
     }
     lines.push("");
   });
   return lines.join("\n");
+}
+
+function attendanceCode(attendance) {
+  if (attendance === "presente") return "P";
+  if (attendance === "falta") return "F";
+  if (attendance === "justificado") return "J";
+  return "-";
+}
+
+function buildPrintableReportHTML(period) {
+  const periodLabel = ui.reportPeriod.options[ui.reportPeriod.selectedIndex]?.textContent || period;
+  const generatedAt = new Date().toLocaleString("pt-BR");
+  const project = currentProject();
+  const nuclei = getVisibleNuclei();
+  const sections = nuclei.map((nucleus) => {
+    const students = getProjectStudents().filter((s) => s.nucleus === nucleus).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    const classStaff = getAttendanceStaffByNucleus(nucleus);
+    const present = students.filter((s) => s.attendance === "presente").length;
+    const presencePercentage = students.length ? Math.round((present / students.length) * 100) : 0;
+    const rows = students.map((s) => `
+      <tr>
+        <td>${s.name}</td>
+        <td>${s.birthDate ? formatDateLabel(s.birthDate) : "-"}</td>
+        <td>${classStaff.classSchedule || s.classSchedule || "-"}</td>
+        <td>${attendanceCode(s.attendance)}</td>
+      </tr>`).join("") || '<tr><td colspan="4">Sem alunos cadastrados.</td></tr>';
+    return `
+      <section class="sheet-block">
+        <h3>${nucleus}</h3>
+        <p><strong>Data da aula:</strong> ${classStaff.classDate ? formatDateLabel(classStaff.classDate) : "-"} 
+        | <strong>Turma:</strong> ${classStaff.classSchedule || "-"} 
+        | <strong>Professor:</strong> ${classStaff.professorName || "-"} 
+        | <strong>Monitor:</strong> ${classStaff.monitorName || "-"}</p>
+        <p><strong>Total matriculados:</strong> ${students.length} | <strong>% Presença:</strong> ${presencePercentage}%</p>
+        <table>
+          <thead><tr><th>Aluno</th><th>Nascimento</th><th>Turma/Horário</th><th>Status (P/F/J)</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </section>`;
+  }).join("");
+
+  return `<!doctype html><html><head><meta charset="utf-8"><title>Relatório de Chamada</title>
+  <style>
+    body{font-family:Arial,sans-serif;color:#1b1b1b;margin:24px}
+    .top{display:flex;align-items:flex-start;gap:16px;border-bottom:2px solid #1f6b3b;padding-bottom:10px;margin-bottom:14px}
+    .top img{width:90px;height:auto}
+    .addr{font-size:13px;line-height:1.4}
+    h2{margin:0 0 8px;color:#1f6b3b}
+    .meta{font-size:13px;margin:0 0 12px}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th,td{border:1px solid #cfd9d2;padding:6px;font-size:12px}
+    th{background:#e8f8ee}
+    .sheet-block{margin-bottom:16px;page-break-inside:avoid}
+  </style></head><body>
+    <div class="top">
+      <img src="logo-iin.svg" alt="IIN" />
+      <div>
+        <h2>Instituto Irmãos Nogueira (IIN)</h2>
+        <div class="addr">Rua Visconde de Pirajá 207, sobreloja 313<br/>CEP 22410-001, Ipanema, Rio de Janeiro - RJ</div>
+      </div>
+    </div>
+    <p class="meta"><strong>Projeto:</strong> ${project.label} | <strong>Relatório:</strong> ${periodLabel} | <strong>Gerado em:</strong> ${generatedAt}</p>
+    ${sections}
+  </body></html>`;
+}
+
+function printReport(period) {
+  const reportWindow = window.open("", "_blank");
+  if (!reportWindow) return;
+  reportWindow.document.write(buildPrintableReportHTML(period));
+  reportWindow.document.close();
+  reportWindow.focus();
+  reportWindow.print();
 }
 function downloadReport(content, period) {
   const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
