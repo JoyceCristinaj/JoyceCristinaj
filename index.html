@@ -59,11 +59,8 @@
               <label>Data da aula
                 <input id="professorClassDate" type="date" />
               </label>
-              <label>Professor (lista)
-                <select id="professorClassProfessor"></select>
-              </label>
-              <label>Monitor (lista)
-                <select id="professorClassMonitor"></select>
+              <label>Turma (horário da aula)
+                <input id="professorClassSchedule" type="text" placeholder="Ex: 18:00 às 19:00" />
               </label>
               <label>Nome do professor da aula
                 <input id="professorClassProfessorName" type="text" placeholder="Digite o nome" />
@@ -94,6 +91,9 @@
           </div>
 
           <h3>Histórico da própria turma</h3>
+          <label>Filtrar histórico por data
+            <input id="professorHistoryDate" type="date" />
+          </label>
           <ul id="professorHistory" class="history-list"></ul>
         </section>
 
@@ -168,11 +168,8 @@
                 <label>Data da aula
                   <input id="attendanceClassDate" type="date" />
                 </label>
-                <label>Professor (lista)
-                  <select id="attendanceClassProfessor"></select>
-                </label>
-                <label>Monitor (lista)
-                  <select id="attendanceClassMonitor"></select>
+                <label>Turma (horário da aula)
+                  <input id="attendanceClassSchedule" type="text" placeholder="Ex: 18:00 às 19:00" />
                 </label>
                 <label>Nome do professor da aula
                   <input id="attendanceClassProfessorName" type="text" placeholder="Digite o nome" />

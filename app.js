@@ -84,19 +84,18 @@ const ui = {
   newRole: document.getElementById("newRole"),
   attendanceCardTemplate: document.getElementById("attendanceCardTemplate"),
   professorClassDate: document.getElementById("professorClassDate"),
-  professorClassProfessor: document.getElementById("professorClassProfessor"),
-  professorClassMonitor: document.getElementById("professorClassMonitor"),
+  professorClassSchedule: document.getElementById("professorClassSchedule"),
   professorClassProfessorName: document.getElementById("professorClassProfessorName"),
   professorClassMonitorName: document.getElementById("professorClassMonitorName"),
   professorClassSave: document.getElementById("professorClassSave"),
   professorClassStatus: document.getElementById("professorClassStatus"),
-  attendanceClassProfessor: document.getElementById("attendanceClassProfessor"),
   attendanceClassDate: document.getElementById("attendanceClassDate"),
-  attendanceClassMonitor: document.getElementById("attendanceClassMonitor"),
+  attendanceClassSchedule: document.getElementById("attendanceClassSchedule"),
   attendanceClassProfessorName: document.getElementById("attendanceClassProfessorName"),
   attendanceClassMonitorName: document.getElementById("attendanceClassMonitorName"),
   attendanceClassSave: document.getElementById("attendanceClassSave"),
   attendanceClassStatus: document.getElementById("attendanceClassStatus"),
+  professorHistoryDate: document.getElementById("professorHistoryDate"),
 };
 init();
 function init() {
@@ -344,6 +343,12 @@ function bindEvents() {
     }
     saveAttendanceStaff(state.attendanceFilter, "management");
   });
+
+  ui.professorHistoryDate?.addEventListener("change", () => {
+    const user = currentUser();
+    if (!user || user.role !== "professor") return;
+    renderProfessorHistory(user.nucleus);
+  });
 }
 function createDefaultUsers() {
   return [
@@ -429,8 +434,7 @@ function createEmptyAttendanceStaff() {
       nucleus,
       {
         classDate: "",
-        professorId: "",
-        monitorId: "",
+        classSchedule: "",
         professorName: "",
         monitorName: "",
       },
@@ -622,26 +626,24 @@ function getProjectAttendanceStaff(projectKey = state.currentProjectKey) {
 function getAttendanceStaffByNucleus(nucleus) {
   const attendanceStaff = getProjectAttendanceStaff();
   if (!attendanceStaff[nucleus]) {
-    attendanceStaff[nucleus] = { classDate: "", professorId: "", monitorId: "", professorName: "", monitorName: "" };
+    attendanceStaff[nucleus] = { classDate: "", classSchedule: "", professorName: "", monitorName: "" };
   }
   return attendanceStaff[nucleus];
 }
 
 function renderClassStaffPanel(nucleus, panelType) {
   const isProfessorPanel = panelType === "professor";
-  const professorSelect = isProfessorPanel ? ui.professorClassProfessor : ui.attendanceClassProfessor;
   const classDateInput = isProfessorPanel ? ui.professorClassDate : ui.attendanceClassDate;
-  const monitorSelect = isProfessorPanel ? ui.professorClassMonitor : ui.attendanceClassMonitor;
+  const classScheduleInput = isProfessorPanel ? ui.professorClassSchedule : ui.attendanceClassSchedule;
   const professorNameInput = isProfessorPanel ? ui.professorClassProfessorName : ui.attendanceClassProfessorName;
   const monitorNameInput = isProfessorPanel ? ui.professorClassMonitorName : ui.attendanceClassMonitorName;
   const statusEl = isProfessorPanel ? ui.professorClassStatus : ui.attendanceClassStatus;
 
-  if (!professorSelect || !monitorSelect || !classDateInput || !professorNameInput || !monitorNameInput || !statusEl) return;
+  if (!classDateInput || !classScheduleInput || !professorNameInput || !monitorNameInput || !statusEl) return;
 
   if (!nucleus || nucleus === "todos") {
-    professorSelect.innerHTML = '<option value="">Selecione um núcleo</option>';
-    monitorSelect.innerHTML = '<option value="">Selecione um núcleo</option>';
     classDateInput.value = "";
+    classScheduleInput.value = "";
     professorNameInput.value = "";
     monitorNameInput.value = "";
     statusEl.textContent = "Selecione um núcleo para preencher professor e monitor da aula.";
@@ -649,31 +651,17 @@ function renderClassStaffPanel(nucleus, panelType) {
   }
 
   const staff = getAttendanceStaffByNucleus(nucleus);
-  const users = state.users.map((item) => ({ id: item.id, label: `${item.username} (${labelRole(item.role)})` }));
-  const fillSelect = (select, selectedId, placeholder) => {
-    select.innerHTML = `<option value="">${placeholder}</option>`;
-    users.forEach((item) => {
-      const option = document.createElement("option");
-      option.value = item.id;
-      option.textContent = item.label;
-      select.appendChild(option);
-    });
-    select.value = selectedId || "";
-  };
-
-  fillSelect(professorSelect, staff.professorId, "Selecione o professor");
-  fillSelect(monitorSelect, staff.monitorId, "Selecione o monitor");
   classDateInput.value = staff.classDate || "";
+  classScheduleInput.value = staff.classSchedule || "";
   professorNameInput.value = staff.professorName || "";
   monitorNameInput.value = staff.monitorName || "";
-  statusEl.textContent = `Chamada do núcleo ${nucleus}: preencha professor e monitor e clique em salvar.`;
+  statusEl.textContent = `Chamada do núcleo ${nucleus}: preencha data, turma, professor e monitor e clique em salvar.`;
 }
 
 function saveAttendanceStaff(nucleus, panelType) {
   const isProfessorPanel = panelType === "professor";
-  const professorSelect = isProfessorPanel ? ui.professorClassProfessor : ui.attendanceClassProfessor;
   const classDateInput = isProfessorPanel ? ui.professorClassDate : ui.attendanceClassDate;
-  const monitorSelect = isProfessorPanel ? ui.professorClassMonitor : ui.attendanceClassMonitor;
+  const classScheduleInput = isProfessorPanel ? ui.professorClassSchedule : ui.attendanceClassSchedule;
   const professorNameInput = isProfessorPanel ? ui.professorClassProfessorName : ui.attendanceClassProfessorName;
   const monitorNameInput = isProfessorPanel ? ui.professorClassMonitorName : ui.attendanceClassMonitorName;
   const statusEl = isProfessorPanel ? ui.professorClassStatus : ui.attendanceClassStatus;
@@ -682,8 +670,7 @@ function saveAttendanceStaff(nucleus, panelType) {
 
   const record = getAttendanceStaffByNucleus(nucleus);
   record.classDate = classDateInput?.value || "";
-  record.professorId = professorSelect?.value || "";
-  record.monitorId = monitorSelect?.value || "";
+  record.classSchedule = classScheduleInput?.value.trim() || "";
   record.professorName = professorNameInput?.value.trim() || "";
   record.monitorName = monitorNameInput?.value.trim() || "";
 
@@ -798,11 +785,12 @@ function renderBoard(target, students, actor) {
     const classDateLabel = classStaff.classDate
       ? new Date(`${classStaff.classDate}T00:00:00`).toLocaleDateString("pt-BR")
       : "não definida";
+    const classScheduleLabel = classStaff.classSchedule || "horário não definido";
     const instructorLabel = classStaff.professorName || "não informado";
     const monitorLabel = classStaff.monitorName || "não informado";
     const column = document.createElement("article");
     column.className = "nucleus-column";
-    column.innerHTML = `<div class="nucleus-header"><h3>${nucleus}</h3><span class="badge">${grouped.length}</span></div><p class="class-meta">Data da aula: ${classDateLabel} • Instrutor: ${instructorLabel} • Monitor: ${monitorLabel}</p>`;
+    column.innerHTML = `<div class="nucleus-header"><h3>${nucleus}</h3><span class="badge">${grouped.length}</span></div><p class="class-meta">Data da aula: ${classDateLabel} • Turma: ${classScheduleLabel} • Instrutor: ${instructorLabel} • Monitor: ${monitorLabel}</p>`;
     if (!grouped.length) {
       const empty = document.createElement("p");
       empty.className = "empty";
@@ -813,7 +801,7 @@ function renderBoard(target, students, actor) {
       const card = ui.attendanceCardTemplate.content.firstElementChild.cloneNode(true);
       card.querySelector(".student-name").textContent = student.name;
       card.querySelector(".student-contact").textContent = student.contact || "Contato não informado";
-      const schedule = student.classSchedule || "horário não informado";
+      const schedule = classStaff.classSchedule || student.classSchedule || "horário não informado";
       card.querySelector(".student-class-info").textContent = `Turma/Horário: ${student.nucleus} • ${schedule}`;
       card.querySelector(".student-status").textContent = `Status: ${student.attendance}`;
       card.querySelector(".btn-present").addEventListener("click", () => {
@@ -871,7 +859,11 @@ function renderProfessorUniform(students, user) {
 }
 function renderProfessorHistory(nucleus) {
   ui.professorHistory.innerHTML = "";
-  const entries = state.history.filter((item) => item.project === state.currentProjectKey && item.nucleus === nucleus).slice(0, 30);
+  const selectedDate = ui.professorHistoryDate?.value || "";
+  const entries = state.history
+    .filter((item) => item.project === state.currentProjectKey && item.nucleus === nucleus)
+    .filter((item) => (selectedDate ? item.timestamp.startsWith(selectedDate) : true))
+    .slice(0, 60);
   if (!entries.length) {
     ui.professorHistory.innerHTML = '<li class="empty">Sem histórico da turma.</li>';
     return;
@@ -1138,9 +1130,15 @@ function buildReport(period) {
       .filter((student) => student.nucleus === nucleus)
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
     const projectCalendar = getProjectCalendar();
+    const classStaff = getAttendanceStaffByNucleus(nucleus);
+    const classDateLabel = classStaff.classDate ? formatDateLabel(classStaff.classDate) : "não definida";
+    const classScheduleLabel = classStaff.classSchedule || "não definido";
+    const instructorLabel = classStaff.professorName || "não informado";
+    const monitorLabel = classStaff.monitorName || "não informado";
     const nucleusData = projectCalendar[nucleus] || { days: [], schedules: [] };
     const days = (nucleusData.days || []).filter((day) => day >= startIso && day <= endIso);
     lines.push(`TURMA/NÚCLEO: ${nucleus}`);
+    lines.push(`Dados da chamada: Data da aula ${classDateLabel} | Turma ${classScheduleLabel} | Professor ${instructorLabel} | Monitor ${monitorLabel}`);
     lines.push(`Horários da turma: ${formatSchedules(nucleusData.schedules)}`);
     lines.push(`Dias com aula no período: ${days.length ? days.map(formatDateLabel).join(", ") : "nenhum"}`);
     lines.push(`Resumo da turma: ${students.length} alunos | ${students.filter((s) => s.attendance === "presente").length} presentes | ${students.filter((s) => s.attendance === "falta").length} faltas | ${students.filter((s) => s.attendance === "justificado").length} justificados | ${students.filter((s) => isKitDelivered(s)).length} kits entregues`);
