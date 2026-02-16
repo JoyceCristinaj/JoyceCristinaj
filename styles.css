@@ -303,9 +303,68 @@ th {
   padding: 0.62rem;
 }
 
+
+
+/* Calendário com horários (layout compacto e fluido) */
+#classCalendarForm {
+  grid-template-columns: repeat(2, minmax(180px, 260px));
+  align-items: end;
+  gap: 0.6rem 0.9rem;
+}
+
+#classCalendarForm > label {
+  max-width: 260px;
+}
+
+#calendarNucleus,
+#calendarDate {
+  max-width: 230px;
+}
+
+#classCalendarForm > div {
+  grid-column: 1 / -1;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fffafb;
+  padding: 0.75rem;
+}
+
+#classCalendarForm > div > p {
+  margin: 0 0 0.55rem;
+  font-size: 0.88rem;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+#classCalendarForm > div .grid-form {
+  grid-template-columns: repeat(3, minmax(160px, 1fr));
+  gap: 0.5rem 0.75rem;
+}
+
+#classCalendarForm > button[type="submit"] {
+  width: fit-content;
+  min-width: 210px;
+}
+
+.calendar-card p {
+  margin: 0 0 0.5rem;
+  font-size: 0.86rem;
+  color: var(--muted);
+}
+
 .empty {
   color: var(--muted);
   font-size: 0.9rem;
+}
+
+@media (max-width: 980px) {
+  #classCalendarForm {
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+  }
+
+  #classCalendarForm > div .grid-form {
+    grid-template-columns: repeat(2, minmax(140px, 1fr));
+  }
 }
 
 @media (max-width: 700px) {
@@ -316,5 +375,21 @@ th {
 
   .card-buttons {
     flex-direction: column;
+  }
+
+  #classCalendarForm {
+    grid-template-columns: 1fr;
+  }
+
+  #classCalendarForm > label,
+  #calendarNucleus,
+  #calendarDate,
+  #classCalendarForm > button[type="submit"] {
+    max-width: 100%;
+    width: 100%;
+  }
+
+  #classCalendarForm > div .grid-form {
+    grid-template-columns: 1fr;
   }
 }
