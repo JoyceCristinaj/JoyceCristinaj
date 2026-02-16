@@ -235,6 +235,23 @@ button {
   flex-wrap: wrap;
 }
 
+.staff-panel {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fffafb;
+  padding: 0.65rem;
+  margin: 0 0 0.75rem;
+}
+
+.staff-panel h4 {
+  margin: 0 0 0.5rem;
+  color: #5e1620;
+}
+
+.staff-panel .report-status {
+  margin-bottom: 0;
+}
+
 .table-wrapper {
   overflow-x: auto;
 }

@@ -34,6 +34,7 @@ const state = {
   history: [],
   uniformStockByProject: createUniformStockByProject(),
   classDaysByProject: createProjectCalendars(),
+  attendanceStaffByProject: createAttendanceStaffByProject(),
   sessionUserId: null,
   currentProjectKey: PROJECTS[0].key,
   search: "",
@@ -82,6 +83,18 @@ const ui = {
   stockForm: document.getElementById("stockForm"),
   newRole: document.getElementById("newRole"),
   attendanceCardTemplate: document.getElementById("attendanceCardTemplate"),
+  professorClassProfessor: document.getElementById("professorClassProfessor"),
+  professorClassMonitor: document.getElementById("professorClassMonitor"),
+  professorClassProfessorName: document.getElementById("professorClassProfessorName"),
+  professorClassMonitorName: document.getElementById("professorClassMonitorName"),
+  professorClassSave: document.getElementById("professorClassSave"),
+  professorClassStatus: document.getElementById("professorClassStatus"),
+  attendanceClassProfessor: document.getElementById("attendanceClassProfessor"),
+  attendanceClassMonitor: document.getElementById("attendanceClassMonitor"),
+  attendanceClassProfessorName: document.getElementById("attendanceClassProfessorName"),
+  attendanceClassMonitorName: document.getElementById("attendanceClassMonitorName"),
+  attendanceClassSave: document.getElementById("attendanceClassSave"),
+  attendanceClassStatus: document.getElementById("attendanceClassStatus"),
 };
 init();
 function init() {
@@ -287,6 +300,7 @@ function bindEvents() {
   });
   ui.attendanceNucleusFilter.addEventListener("change", (event) => {
     state.attendanceFilter = event.target.value;
+    renderClassStaffPanel(state.attendanceFilter === "todos" ? "" : state.attendanceFilter, "management");
     renderManagementAttendance(currentUser());
   });
   ui.uniformNucleusFilter.addEventListener("change", (event) => {
@@ -305,12 +319,28 @@ function bindEvents() {
     state.currentProjectKey = event.target.value;
     hydrateNucleusSelects();
     hydrateStudentScheduleOptions();
-  hydrateStudentModalityOptions();
+    hydrateStudentModalityOptions();
     render();
   });
 
   ui.newRole.addEventListener("change", () => {
     document.getElementById("newNucleus").disabled = ui.newRole.value !== "professor";
+  });
+
+  ui.professorClassSave?.addEventListener("click", () => {
+    const user = currentUser();
+    if (!user || user.role !== "professor") return;
+    saveAttendanceStaff(user.nucleus, "professor");
+  });
+
+  ui.attendanceClassSave?.addEventListener("click", () => {
+    const user = currentUser();
+    if (!user || (user.role !== "gestao" && user.role !== "admin")) return;
+    if (state.attendanceFilter === "todos") {
+      ui.attendanceClassStatus.textContent = "Selecione um núcleo para salvar professor e monitor da chamada.";
+      return;
+    }
+    saveAttendanceStaff(state.attendanceFilter, "management");
   });
 }
 function createDefaultUsers() {
@@ -391,6 +421,24 @@ function createProjectCalendars() {
   return Object.fromEntries(PROJECTS.map((project) => [project.key, createEmptyCalendar()]));
 }
 
+function createEmptyAttendanceStaff() {
+  return Object.fromEntries(
+    NUCLEI.map((nucleus) => [
+      nucleus,
+      {
+        professorId: "",
+        monitorId: "",
+        professorName: "",
+        monitorName: "",
+      },
+    ]),
+  );
+}
+
+function createAttendanceStaffByProject() {
+  return Object.fromEntries(PROJECTS.map((project) => [project.key, createEmptyAttendanceStaff()]));
+}
+
 function createEmptyCalendar() {
   return Object.fromEntries(
     NUCLEI.map((nucleus) => [
@@ -435,6 +483,7 @@ function loadData() {
     ensureRequiredUsers();
     state.students = createDefaultStudents().map(normalizeStudentRecord);
     state.classDaysByProject = createProjectCalendars();
+    state.attendanceStaffByProject = createAttendanceStaffByProject();
     persist();
     return;
   }
@@ -462,16 +511,29 @@ function loadData() {
       state.classDaysByProject[PROJECTS[0].key] = normalizeCalendar(parsed.classDaysByNucleus, PROJECTS[0].key);
     }
 
+    state.attendanceStaffByProject = Object.fromEntries(
+      projectKeys.map((key) => {
+        const rawStaff = parsed.attendanceStaffByProject?.[key] || parsed.attendanceStaffByNucleus || {};
+        const normalized = createEmptyAttendanceStaff();
+        getVisibleNuclei(key).forEach((nucleus) => {
+          normalized[nucleus] = { ...normalized[nucleus], ...(rawStaff[nucleus] || {}) };
+        });
+        return [key, normalized];
+      }),
+    );
+
     state.students = (parsed.students || createDefaultStudents()).map(normalizeStudentRecord);
 
     state.history = (parsed.history || []).map((item) => ({
       ...item,
       project: item.project || PROJECTS[0].key,
-    }));  } catch {
+    }));
+  } catch {
     state.users = createDefaultUsers();
     ensureRequiredUsers();
     state.students = createDefaultStudents().map(normalizeStudentRecord);
     state.classDaysByProject = createProjectCalendars();
+    state.attendanceStaffByProject = createAttendanceStaffByProject();
   }
 }
 function persist() {
@@ -483,6 +545,7 @@ function persist() {
       history: state.history,
       uniformStockByProject: state.uniformStockByProject,
       classDaysByProject: state.classDaysByProject,
+      attendanceStaffByProject: state.attendanceStaffByProject,
     }),
   );
 }
@@ -545,6 +608,80 @@ function labelRole(role) {
   if (role === "gestao") return "Gestão Interna";
   return "Administrador";
 }
+
+function getProjectAttendanceStaff(projectKey = state.currentProjectKey) {
+  if (!state.attendanceStaffByProject[projectKey]) {
+    state.attendanceStaffByProject[projectKey] = createEmptyAttendanceStaff();
+  }
+  return state.attendanceStaffByProject[projectKey];
+}
+
+function getAttendanceStaffByNucleus(nucleus) {
+  const attendanceStaff = getProjectAttendanceStaff();
+  if (!attendanceStaff[nucleus]) {
+    attendanceStaff[nucleus] = { professorId: "", monitorId: "", professorName: "", monitorName: "" };
+  }
+  return attendanceStaff[nucleus];
+}
+
+function renderClassStaffPanel(nucleus, panelType) {
+  const isProfessorPanel = panelType === "professor";
+  const professorSelect = isProfessorPanel ? ui.professorClassProfessor : ui.attendanceClassProfessor;
+  const monitorSelect = isProfessorPanel ? ui.professorClassMonitor : ui.attendanceClassMonitor;
+  const professorNameInput = isProfessorPanel ? ui.professorClassProfessorName : ui.attendanceClassProfessorName;
+  const monitorNameInput = isProfessorPanel ? ui.professorClassMonitorName : ui.attendanceClassMonitorName;
+  const statusEl = isProfessorPanel ? ui.professorClassStatus : ui.attendanceClassStatus;
+
+  if (!professorSelect || !monitorSelect || !professorNameInput || !monitorNameInput || !statusEl) return;
+
+  if (!nucleus || nucleus === "todos") {
+    professorSelect.innerHTML = '<option value="">Selecione um núcleo</option>';
+    monitorSelect.innerHTML = '<option value="">Selecione um núcleo</option>';
+    professorNameInput.value = "";
+    monitorNameInput.value = "";
+    statusEl.textContent = "Selecione um núcleo para preencher professor e monitor da aula.";
+    return;
+  }
+
+  const staff = getAttendanceStaffByNucleus(nucleus);
+  const users = state.users.map((item) => ({ id: item.id, label: `${item.username} (${labelRole(item.role)})` }));
+  const fillSelect = (select, selectedId, placeholder) => {
+    select.innerHTML = `<option value="">${placeholder}</option>`;
+    users.forEach((item) => {
+      const option = document.createElement("option");
+      option.value = item.id;
+      option.textContent = item.label;
+      select.appendChild(option);
+    });
+    select.value = selectedId || "";
+  };
+
+  fillSelect(professorSelect, staff.professorId, "Selecione o professor");
+  fillSelect(monitorSelect, staff.monitorId, "Selecione o monitor");
+  professorNameInput.value = staff.professorName || "";
+  monitorNameInput.value = staff.monitorName || "";
+  statusEl.textContent = `Chamada do núcleo ${nucleus}: preencha professor e monitor e clique em salvar.`;
+}
+
+function saveAttendanceStaff(nucleus, panelType) {
+  const isProfessorPanel = panelType === "professor";
+  const professorSelect = isProfessorPanel ? ui.professorClassProfessor : ui.attendanceClassProfessor;
+  const monitorSelect = isProfessorPanel ? ui.professorClassMonitor : ui.attendanceClassMonitor;
+  const professorNameInput = isProfessorPanel ? ui.professorClassProfessorName : ui.attendanceClassProfessorName;
+  const monitorNameInput = isProfessorPanel ? ui.professorClassMonitorName : ui.attendanceClassMonitorName;
+  const statusEl = isProfessorPanel ? ui.professorClassStatus : ui.attendanceClassStatus;
+
+  if (!nucleus || nucleus === "todos") return;
+
+  const record = getAttendanceStaffByNucleus(nucleus);
+  record.professorId = professorSelect?.value || "";
+  record.monitorId = monitorSelect?.value || "";
+  record.professorName = professorNameInput?.value.trim() || "";
+  record.monitorName = monitorNameInput?.value.trim() || "";
+
+  persist();
+  statusEl.textContent = `Dados da chamada salvos para ${nucleus} em ${new Date().toLocaleString("pt-BR")}.`;
+}
 function render() {
   const user = currentUser();
   ui.loginScreen.classList.toggle("hidden", Boolean(user));
@@ -573,6 +710,7 @@ function render() {
 function renderProfessorArea(user) {
   ui.professorNucleusBadge.textContent = `Turma: ${user.nucleus}`;
   const students = getProjectStudents().filter((student) => student.nucleus === user.nucleus);
+  renderClassStaffPanel(user.nucleus, "professor");
   renderBoard(ui.professorBoard, students, user);
   renderProfessorUniform(students, user);
   renderProfessorHistory(user.nucleus);
@@ -580,6 +718,7 @@ function renderProfessorArea(user) {
 function renderManagementArea(user) {
   renderMetrics();
   renderClassDays();
+  renderClassStaffPanel(state.attendanceFilter === "todos" ? "" : state.attendanceFilter, "management");
   renderManagementAttendance(user);
   renderManagementUniform(user);
   renderStock();

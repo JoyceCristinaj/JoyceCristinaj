@@ -53,6 +53,25 @@
             <span id="professorNucleusBadge" class="badge">Turma</span>
           </div>
           <h3>Chamada da turma</h3>
+          <section class="staff-panel">
+            <h4>Professor e monitor da aula</h4>
+            <div class="grid-form">
+              <label>Professor (lista)
+                <select id="professorClassProfessor"></select>
+              </label>
+              <label>Monitor (lista)
+                <select id="professorClassMonitor"></select>
+              </label>
+              <label>Nome do professor da aula
+                <input id="professorClassProfessorName" type="text" placeholder="Digite o nome" />
+              </label>
+              <label>Nome do monitor da aula
+                <input id="professorClassMonitorName" type="text" placeholder="Digite o nome" />
+              </label>
+            </div>
+            <button id="professorClassSave" type="button" class="small-btn">Salvar professor/monitor da chamada</button>
+            <p id="professorClassStatus" class="report-status">Preencha os dados da aula e salve.</p>
+          </section>
           <div id="professorBoard" class="board-grid"></div>
 
           <h3>Entrega de kit (própria turma)</h3>
@@ -140,6 +159,25 @@
                 <select id="attendanceNucleusFilter"></select>
               </div>
             </div>
+            <section class="staff-panel">
+              <h4>Professor e monitor da aula (núcleo selecionado)</h4>
+              <div class="grid-form">
+                <label>Professor (lista)
+                  <select id="attendanceClassProfessor"></select>
+                </label>
+                <label>Monitor (lista)
+                  <select id="attendanceClassMonitor"></select>
+                </label>
+                <label>Nome do professor da aula
+                  <input id="attendanceClassProfessorName" type="text" placeholder="Digite o nome" />
+                </label>
+                <label>Nome do monitor da aula
+                  <input id="attendanceClassMonitorName" type="text" placeholder="Digite o nome" />
+                </label>
+              </div>
+              <button id="attendanceClassSave" type="button" class="small-btn">Salvar professor/monitor da chamada</button>
+              <p id="attendanceClassStatus" class="report-status">Selecione o núcleo e preencha os dados da aula.</p>
+            </section>
             <div id="attendanceBoard" class="board-grid"></div>
           </section>
 
