@@ -251,7 +251,7 @@ function onLogin(event) {
   const user = state.users.find((item) => item.username === username && item.password === password);
 
   if (!user) {
-    ui.loginMessage.textContent = "Usuário ou senha inválidos. Tente: prof_cg/prof123, gestao/iin@2026 ou admin/admin@2026.";
+    ui.loginMessage.textContent = "Usuário ou senha inválidos.";
     return;
   }
 
