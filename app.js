@@ -1,7 +1,12 @@
 const STORAGE_KEY = "iin-system-v5";
 const SESSION_KEY = "iin-session-v5";
-const NUCLEI = ["Campo Grande", "Freguesia", "Jacarezinho", "Penha", "Realengo", "Santa Cruz"];
+const NUCLEI = ["Campo Grande", "Freguesia", "Jacarezinho", "Penha", "Realengo", "Santa Cruz", "Macaé"];
 const SIZES = ["PP", "P", "M", "G", "GG"];
+const PROJECT_NUCLEI = {
+  light: ["Campo Grande", "Jacarezinho", "Penha", "Santa Cruz"],
+  enel: ["Macaé"],
+  supergasbras: ["Freguesia", "Realengo"],
+};
 const PROJECTS = [
   { key: "light", label: "Light", processNumber: "A definir" },
   { key: "enel", label: "Enel", processNumber: "A definir" },
@@ -79,20 +84,28 @@ function hydrateNucleusSelects() {
     "attendanceNucleusFilter",
     "uniformNucleusFilter",
   ];
+  const visibleNuclei = getVisibleNuclei();
+
   selectIds.forEach((id) => {
     const select = document.getElementById(id);
     if (!select) return;
+
     if (id.endsWith("Filter")) {
       select.innerHTML = '<option value="todos">Todos os núcleos</option>';
     } else {
       select.innerHTML = "";
     }
-    NUCLEI.forEach((nucleus) => {
+
+    visibleNuclei.forEach((nucleus) => {
       const option = document.createElement("option");
       option.value = nucleus;
       option.textContent = nucleus;
       select.appendChild(option);
     });
+
+    if (!id.endsWith("Filter") && visibleNuclei.length) {
+      select.value = visibleNuclei[0];
+    }
   });
 }
 
@@ -132,6 +145,10 @@ function currentProject() {
   return PROJECTS.find((project) => project.key === state.currentProjectKey) || PROJECTS[0];
 }
 
+function getVisibleNuclei(projectKey = state.currentProjectKey) {
+  return PROJECT_NUCLEI[projectKey] || NUCLEI;
+}
+
 function getProjectCalendar(projectKey = state.currentProjectKey) {
   if (!state.classDaysByProject[projectKey]) {
     state.classDaysByProject[projectKey] = createEmptyCalendar();
@@ -147,7 +164,8 @@ function getProjectStock(projectKey = state.currentProjectKey) {
 }
 
 function getProjectStudents(projectKey = state.currentProjectKey) {
-  return state.students.filter((student) => student.project === projectKey);
+  const visible = getVisibleNuclei(projectKey);
+  return state.students.filter((student) => student.project === projectKey && visible.includes(student.nucleus));
 }
 
 function bindEvents() {
@@ -178,7 +196,9 @@ function bindEvents() {
   ui.stockForm.addEventListener("submit", onAdjustStock);
   ui.loginProject.addEventListener("change", (event) => {
     state.currentProjectKey = event.target.value;
+    hydrateNucleusSelects();
     hydrateStudentScheduleOptions();
+    render();
   });
 
   ui.newRole.addEventListener("change", () => {
@@ -252,9 +272,9 @@ function createEmptyCalendar() {
     ]),
   );
 }
-function normalizeCalendar(rawCalendar) {
+function normalizeCalendar(rawCalendar, projectKey = state.currentProjectKey) {
   const normalized = createEmptyCalendar();
-  NUCLEI.forEach((nucleus) => {
+  getVisibleNuclei(projectKey).forEach((nucleus) => {
     const value = rawCalendar?.[nucleus];
     if (Array.isArray(value)) {
       normalized[nucleus].days = [...new Set(value)].sort((a, b) => b.localeCompare(a));
@@ -305,11 +325,11 @@ function loadData() {
 
     if (parsed.classDaysByProject) {
       state.classDaysByProject = Object.fromEntries(
-        projectKeys.map((key) => [key, normalizeCalendar(parsed.classDaysByProject[key])]),
+        projectKeys.map((key) => [key, normalizeCalendar(parsed.classDaysByProject[key], key)]),
       );
     } else {
       state.classDaysByProject = createProjectCalendars();
-      state.classDaysByProject[PROJECTS[0].key] = normalizeCalendar(parsed.classDaysByNucleus);
+      state.classDaysByProject[PROJECTS[0].key] = normalizeCalendar(parsed.classDaysByNucleus, PROJECTS[0].key);
     }
 
     state.students = (parsed.students || createDefaultStudents()).map((student) => ({
@@ -381,6 +401,8 @@ function onLogin(event) {
   saveSession();
   ui.loginForm.reset();
   hydrateProjectSelects();
+  hydrateNucleusSelects();
+  hydrateStudentScheduleOptions();
   ui.loginMessage.textContent = `Acesso liberado para ${labelRole(user.role)} • Projeto ${currentProject().label}.`;
   render();
 }
@@ -440,6 +462,7 @@ function onAddStudent(event) {
   if (!user || (user.role !== "gestao" && user.role !== "admin")) return;
   const name = document.getElementById("studentName").value.trim();
   const nucleus = document.getElementById("studentNucleus").value;
+  if (!getVisibleNuclei().includes(nucleus)) return;
   const schedule = (ui.studentSchedule?.value || "").trim();
   const contact = document.getElementById("studentContact").value.trim();
   if (!name) return;
@@ -463,6 +486,7 @@ function onAddClassDay(event) {
   const user = currentUser();
   if (!user || (user.role !== "gestao" && user.role !== "admin")) return;
   const nucleus = document.getElementById("calendarNucleus").value;
+  if (!getVisibleNuclei().includes(nucleus)) return;
   const date = document.getElementById("calendarDate").value;
   const schedules = getSchedulesFromForm();
   if (!nucleus) return;
@@ -488,7 +512,7 @@ function onAddClassDay(event) {
 function renderBoard(target, students, actor) {
   target.innerHTML = "";
   const effectiveActor = actor || currentUser() || { role: "gestao", nucleus: null, username: "sistema" };
-  const nuclei = effectiveActor.role === "professor" ? [effectiveActor.nucleus] : NUCLEI;
+  const nuclei = effectiveActor.role === "professor" ? [effectiveActor.nucleus] : getVisibleNuclei();
   nuclei.forEach((nucleus) => {
     const grouped = students.filter((student) => student.nucleus === nucleus);
     const column = document.createElement("article");
@@ -572,7 +596,7 @@ function renderMetrics() {
 function renderClassDays() {
   ui.classCalendarBoard.innerHTML = "";
   const projectCalendar = getProjectCalendar();
-  NUCLEI.forEach((nucleus) => {
+  getVisibleNuclei().forEach((nucleus) => {
     const nucleusData = projectCalendar[nucleus] || { days: [], schedules: [] };
     const days = nucleusData.days || [];
     const card = document.createElement("article");
@@ -794,7 +818,7 @@ function buildReport(period) {
     `Período: ${start.toLocaleDateString("pt-BR")} até ${end.toLocaleDateString("pt-BR")}`,
     "",
   ];
-  NUCLEI.forEach((nucleus) => {
+  getVisibleNuclei().forEach((nucleus) => {
     const students = getProjectStudents()
       .filter((student) => student.nucleus === nucleus)
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
