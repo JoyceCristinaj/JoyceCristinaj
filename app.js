@@ -33,6 +33,7 @@ const ui = {
   absentCount: document.getElementById("absentCount"),
   uniformDelivered: document.getElementById("uniformDelivered"),
   studentForm: document.getElementById("studentForm"),
+  studentSchedule: document.getElementById("studentSchedule"),
   classCalendarForm: document.getElementById("classCalendarForm"),
   classCalendarBoard: document.getElementById("classCalendarBoard"),
   calendarStartTimes: Array.from({ length: 6 }, (_, index) => document.getElementById(`calendarStartTime${index + 1}`)),
@@ -58,6 +59,7 @@ function init() {
   loadData();
   loadSession();
   hydrateNucleusSelects();
+  hydrateStudentScheduleOptions();
   bindEvents();
   render();
 }
@@ -85,10 +87,28 @@ function hydrateNucleusSelects() {
     });
   });
 }
+
+function hydrateStudentScheduleOptions() {
+  if (!ui.studentSchedule) return;
+
+  const nucleus = document.getElementById("studentNucleus")?.value;
+  const schedules = state.classDaysByNucleus[nucleus]?.schedules || [];
+
+  ui.studentSchedule.innerHTML = '<option value="">Selecione (opcional)</option>';
+  schedules.forEach((slot) => {
+    const value = `${slot.start} às ${slot.end}`;
+    const option = document.createElement("option");
+    option.value = value;
+    option.textContent = value;
+    ui.studentSchedule.appendChild(option);
+  });
+}
+
 function bindEvents() {
   ui.loginForm.addEventListener("submit", onLogin);
   ui.logoutBtn.addEventListener("click", onLogout);
   ui.studentForm.addEventListener("submit", onAddStudent);
+  document.getElementById("studentNucleus").addEventListener("change", hydrateStudentScheduleOptions);
   ui.classCalendarForm.addEventListener("submit", onAddClassDay);
   ui.attendanceSearch.addEventListener("input", (event) => {
     state.search = event.target.value.trim().toLowerCase();
@@ -147,6 +167,7 @@ function createDefaultStudents() {
       contact: "Responsável: Carlos",
       attendance: "presente",
       uniform: { size: "M", delivered: true, notes: "Entregue" },
+      classSchedule: "",
     },
     {
       id: crypto.randomUUID(),
@@ -155,6 +176,7 @@ function createDefaultStudents() {
       contact: "Responsável: Marta",
       attendance: "falta",
       uniform: { size: "G", delivered: false, notes: "Aguardando" },
+      classSchedule: "",
     },
   ];
 }
@@ -316,6 +338,7 @@ function onAddStudent(event) {
   if (!user || (user.role !== "gestao" && user.role !== "admin")) return;
   const name = document.getElementById("studentName").value.trim();
   const nucleus = document.getElementById("studentNucleus").value;
+  const schedule = (ui.studentSchedule?.value || "").trim();
   const contact = document.getElementById("studentContact").value.trim();
   if (!name) return;
   state.students.unshift({
@@ -325,9 +348,11 @@ function onAddStudent(event) {
     contact,
     attendance: "não registrado",
     uniform: { size: "", delivered: false, notes: "" },
+    classSchedule: schedule,
   });
   persist();
   ui.studentForm.reset();
+  hydrateStudentScheduleOptions();
   render();
 }
 function onAddClassDay(event) {
@@ -354,6 +379,7 @@ function onAddClassDay(event) {
   persist();
   ui.classCalendarForm.reset();
   renderClassDays();
+  hydrateStudentScheduleOptions();
 }
 function renderBoard(target, students, actor) {
   target.innerHTML = "";
@@ -671,7 +697,7 @@ function buildReport(period) {
     } else {
       students.forEach((student) => {
         const attendanceDate = generatedAt.toLocaleDateString("pt-BR");
-        lines.push(`- Nome completo: ${student.name} | Data do relatório: ${attendanceDate} | Presença: ${student.attendance} | Uniforme: ${student.uniform.delivered ? "Entregue" : "Pendente"} (${student.uniform.size || "Sem tamanho"})`);
+        lines.push(`- Nome completo: ${student.name} | Data do relatório: ${attendanceDate} | Horário matriculado: ${student.classSchedule || "não informado"} | Presença: ${student.attendance} | Uniforme: ${student.uniform.delivered ? "Entregue" : "Pendente"} (${student.uniform.size || "Sem tamanho"})`);
       });
     }
     lines.push("");
