@@ -70,7 +70,7 @@ const ui = {
   calendarEndTimes: Array.from({ length: 6 }, (_, index) => document.getElementById(`calendarEndTime${index + 1}`)),
   attendanceSearch: document.getElementById("attendanceSearch"),
   attendanceNucleusFilter: document.getElementById("attendanceNucleusFilter"),
-  attendanceBoard: document.getElementById("attendanceBoard"),
+  attendanceReportBoard: document.getElementById("attendanceReportBoard"),
   uniformNucleusFilter: document.getElementById("uniformNucleusFilter"),
   uniformTableBody: document.getElementById("uniformTableBody"),
   stockView: document.getElementById("stockView"),
@@ -295,13 +295,12 @@ function bindEvents() {
   ui.studentForm.addEventListener("submit", onAddStudent);
   document.getElementById("studentNucleus").addEventListener("change", hydrateStudentScheduleOptions);
   ui.classCalendarForm.addEventListener("submit", onAddClassDay);
-  ui.attendanceSearch.addEventListener("input", (event) => {
+  ui.attendanceSearch?.addEventListener("input", (event) => {
     state.search = event.target.value.trim().toLowerCase();
     renderManagementAttendance(currentUser());
   });
   ui.attendanceNucleusFilter.addEventListener("change", (event) => {
     state.attendanceFilter = event.target.value;
-    renderClassStaffPanel(state.attendanceFilter === "todos" ? "" : state.attendanceFilter, "management");
     renderManagementAttendance(currentUser());
   });
   ui.uniformNucleusFilter.addEventListener("change", (event) => {
@@ -332,16 +331,6 @@ function bindEvents() {
     const user = currentUser();
     if (!user || user.role !== "professor") return;
     saveAttendanceStaff(user.nucleus, "professor");
-  });
-
-  ui.attendanceClassSave?.addEventListener("click", () => {
-    const user = currentUser();
-    if (!user || (user.role !== "gestao" && user.role !== "admin")) return;
-    if (state.attendanceFilter === "todos") {
-      ui.attendanceClassStatus.textContent = "Selecione um núcleo para salvar professor e monitor da chamada.";
-      return;
-    }
-    saveAttendanceStaff(state.attendanceFilter, "management");
   });
 
   ui.professorHistoryDate?.addEventListener("change", () => {
@@ -713,7 +702,6 @@ function renderProfessorArea(user) {
 function renderManagementArea(user) {
   renderMetrics();
   renderClassDays();
-  renderClassStaffPanel(state.attendanceFilter === "todos" ? "" : state.attendanceFilter, "management");
   renderManagementAttendance(user);
   renderManagementUniform(user);
   renderStock();
@@ -907,12 +895,46 @@ function renderClassDays() {
   });
 }
 function renderManagementAttendance(user = currentUser()) {
-  const filtered = getProjectStudents().filter((student) => {
-    const byName = student.name.toLowerCase().includes(state.search);
-    const byNucleus = state.attendanceFilter === "todos" || student.nucleus === state.attendanceFilter;
-    return byName && byNucleus;
+  if (!ui.attendanceReportBoard) return;
+  ui.attendanceReportBoard.innerHTML = "";
+
+  const nuclei = state.attendanceFilter === "todos" ? getVisibleNuclei() : [state.attendanceFilter];
+  nuclei.forEach((nucleus) => {
+    const students = getProjectStudents()
+      .filter((student) => student.nucleus === nucleus)
+      .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+    const classStaff = getAttendanceStaffByNucleus(nucleus);
+
+    const classDateLabel = classStaff.classDate ? new Date(`${classStaff.classDate}T00:00:00`).toLocaleDateString("pt-BR") : "não definida";
+    const scheduleLabel = classStaff.classSchedule || "não definida";
+    const professorLabel = classStaff.professorName || "não informado";
+    const monitorLabel = classStaff.monitorName || "não informado";
+    const present = students.filter((s) => s.attendance === "presente").length;
+    const absent = students.filter((s) => s.attendance === "falta").length;
+    const justified = students.filter((s) => s.attendance === "justificado").length;
+
+    const card = document.createElement("article");
+    card.className = "calendar-card";
+    card.innerHTML = `
+      <div class="calendar-header"><h3>${nucleus}</h3><span class="badge">${students.length} alunos</span></div>
+      <p><strong>Data da aula:</strong> ${classDateLabel}</p>
+      <p><strong>Turma/horário:</strong> ${scheduleLabel}</p>
+      <p><strong>Professor:</strong> ${professorLabel}</p>
+      <p><strong>Monitor:</strong> ${monitorLabel}</p>
+      <p><strong>Resumo:</strong> ${present} presentes • ${absent} faltas • ${justified} justificados</p>
+      <div class="table-wrapper">
+        <table>
+          <thead>
+            <tr><th>Aluno</th><th>Status</th></tr>
+          </thead>
+          <tbody>
+            ${students.map((s) => `<tr><td>${s.name}</td><td>${s.attendance}</td></tr>`).join("") || '<tr><td colspan="2" class="empty">Sem alunos.</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    `;
+    ui.attendanceReportBoard.appendChild(card);
   });
-  renderBoard(ui.attendanceBoard, filtered, user);
 }
 function renderManagementUniform(user = currentUser()) {
   if (!user) return;

@@ -156,32 +156,12 @@
 
           <section class="panel">
             <div class="panel-title-row">
-              <h2>Controle de chamadas</h2>
+              <h2>Relatório em tempo real da chamada (somente controle)</h2>
               <div class="toolbar">
-                <input id="attendanceSearch" type="search" placeholder="Buscar aluno" />
                 <select id="attendanceNucleusFilter"></select>
               </div>
             </div>
-            <section class="staff-panel">
-              <h4>Professor e monitor da aula (núcleo selecionado)</h4>
-              <div class="grid-form">
-                <label>Data da aula
-                  <input id="attendanceClassDate" type="date" />
-                </label>
-                <label>Turma (horário da aula)
-                  <input id="attendanceClassSchedule" type="text" placeholder="Ex: 18:00 às 19:00" />
-                </label>
-                <label>Nome do professor da aula
-                  <input id="attendanceClassProfessorName" type="text" placeholder="Digite o nome" />
-                </label>
-                <label>Nome do monitor da aula
-                  <input id="attendanceClassMonitorName" type="text" placeholder="Digite o nome" />
-                </label>
-              </div>
-              <button id="attendanceClassSave" type="button" class="small-btn">Salvar professor/monitor da chamada</button>
-              <p id="attendanceClassStatus" class="report-status">Selecione o núcleo e preencha os dados da aula.</p>
-            </section>
-            <div id="attendanceBoard" class="board-grid"></div>
+            <div id="attendanceReportBoard" class="board-grid"></div>
           </section>
 
           <section class="panel">
