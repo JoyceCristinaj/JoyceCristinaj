@@ -171,6 +171,67 @@ function formatAllowedItems(modality) {
   return items.length ? items.map(labelStockCategory).join(", ") : "Sem itens configurados";
 }
 
+function createEmptyDeliveryItems() {
+  return Object.fromEntries(STOCK_CATEGORIES.map((item) => [item.key, false]));
+}
+
+function normalizeDeliveryItems(student) {
+  const allowedItems = getAllowedItemsByModality(student.modality);
+  const emptyItems = createEmptyDeliveryItems();
+  const savedItems = student.uniform?.items || {};
+
+  if (student.uniform?.delivered === true) {
+    allowedItems.forEach((itemKey) => {
+      emptyItems[itemKey] = true;
+    });
+  }
+
+  allowedItems.forEach((itemKey) => {
+    if (typeof savedItems[itemKey] === "boolean") {
+      emptyItems[itemKey] = savedItems[itemKey];
+    }
+  });
+
+  return emptyItems;
+}
+
+function isKitDelivered(student) {
+  const allowedItems = getAllowedItemsByModality(student.modality);
+  if (!allowedItems.length) return false;
+  return allowedItems.every((itemKey) => student.uniform?.items?.[itemKey] === true);
+}
+
+function renderItemDeliveryControls(container, student) {
+  container.innerHTML = "";
+  const allowedItems = getAllowedItemsByModality(student.modality);
+
+  if (!allowedItems.length) {
+    container.textContent = "Sem itens configurados";
+    return [];
+  }
+
+  const controls = [];
+  allowedItems.forEach((itemKey) => {
+    const wrap = document.createElement("div");
+    wrap.className = "item-delivery-control";
+
+    const label = document.createElement("label");
+    label.textContent = labelStockCategory(itemKey);
+
+    const select = document.createElement("select");
+    select.innerHTML = '<option value="nao">Pendente</option><option value="sim">Entregue</option>';
+    select.value = student.uniform?.items?.[itemKey] ? "sim" : "nao";
+
+    wrap.appendChild(label);
+    wrap.appendChild(select);
+    container.appendChild(wrap);
+
+    controls.push({ itemKey, select });
+  });
+
+  return controls;
+}
+
 function hydrateProjectSelects() {
   if (!ui.loginProject) return;
 
@@ -274,6 +335,22 @@ function ensureRequiredUsers() {
     };
   });
 }
+function normalizeStudentRecord(student) {
+  const project = student.project || PROJECTS[0].key;
+  const modality = student.modality || (PROJECT_MODALITIES[project]?.[0] || "");
+
+  return {
+    ...student,
+    project,
+    classSchedule: student.classSchedule || "",
+    modality,
+    uniform: {
+      notes: student.uniform?.notes || "",
+      items: normalizeDeliveryItems({ ...student, project, modality }),
+    },
+  };
+}
+
 function createDefaultStudents() {
   return [
     {
@@ -354,7 +431,7 @@ function loadData() {
   if (!saved) {
     state.users = createDefaultUsers();
     ensureRequiredUsers();
-    state.students = createDefaultStudents();
+    state.students = createDefaultStudents().map(normalizeStudentRecord);
     state.classDaysByProject = createProjectCalendars();
     persist();
     return;
@@ -383,13 +460,7 @@ function loadData() {
       state.classDaysByProject[PROJECTS[0].key] = normalizeCalendar(parsed.classDaysByNucleus, PROJECTS[0].key);
     }
 
-    state.students = (parsed.students || createDefaultStudents()).map((student) => ({
-      ...student,
-      project: student.project || PROJECTS[0].key,
-      classSchedule: student.classSchedule || "",
-      modality: student.modality || (PROJECT_MODALITIES[student.project || PROJECTS[0].key]?.[0] || ""),
-      uniform: { delivered: Boolean(student.uniform?.delivered), notes: student.uniform?.notes || "" },
-    }));
+    state.students = (parsed.students || createDefaultStudents()).map(normalizeStudentRecord);
 
     state.history = (parsed.history || []).map((item) => ({
       ...item,
@@ -397,7 +468,7 @@ function loadData() {
     }));  } catch {
     state.users = createDefaultUsers();
     ensureRequiredUsers();
-    state.students = createDefaultStudents();
+    state.students = createDefaultStudents().map(normalizeStudentRecord);
     state.classDaysByProject = createProjectCalendars();
   }
 }
@@ -529,7 +600,7 @@ function onAddStudent(event) {
     contact,
     attendance: "não registrado",
     modality,
-    uniform: { delivered: false, notes: "" },
+    uniform: { notes: "", items: createEmptyDeliveryItems() },
     classSchedule: schedule,
     project: state.currentProjectKey,
   });
@@ -617,17 +688,24 @@ function renderProfessorUniform(students, user) {
       <td>${student.name}</td>
       <td>${student.modality || "-"}</td>
       <td>${formatAllowedItems(student.modality)}</td>
-      <td><select data-role="delivered"><option value="nao">Não entregue</option><option value="sim">Entregue</option></select></td>
+      <td data-role="items"></td>
       <td><input data-role="notes" type="text" placeholder="Observação" /></td>
       <td><button data-role="save" class="small-btn" type="button">Salvar</button></td>
     `;
-    const delivered = row.querySelector('[data-role="delivered"]');
+
+    const itemsCell = row.querySelector('[data-role="items"]');
+    const itemControls = renderItemDeliveryControls(itemsCell, student);
     const notes = row.querySelector('[data-role="notes"]');
-    delivered.value = student.uniform.delivered ? "sim" : "nao";
     notes.value = student.uniform.notes || "";
+
     row.querySelector('[data-role="save"]').addEventListener("click", () => {
-      applyUniformUpdate(student, delivered.value === "sim", notes.value.trim(), user);
+      const nextItems = { ...(student.uniform.items || createEmptyDeliveryItems()) };
+      itemControls.forEach(({ itemKey, select }) => {
+        nextItems[itemKey] = select.value === "sim";
+      });
+      applyUniformUpdate(student, nextItems, notes.value.trim(), user);
     });
+
     ui.professorUniformBody.appendChild(row);
   });
 }
@@ -649,7 +727,7 @@ function renderMetrics() {
   ui.totalStudents.textContent = students.length;
   ui.presentCount.textContent = students.filter((student) => student.attendance === "presente").length;
   ui.absentCount.textContent = students.filter((student) => student.attendance === "falta").length;
-  ui.uniformDelivered.textContent = students.filter((student) => student.uniform.delivered).length;
+  ui.uniformDelivered.textContent = students.filter((student) => isKitDelivered(student)).length;
 }
 function renderClassDays() {
   ui.classCalendarBoard.innerHTML = "";
@@ -702,18 +780,25 @@ function renderManagementUniform(user = currentUser()) {
       <td>${student.nucleus}</td>
       <td>${student.modality || "-"}</td>
       <td>${formatAllowedItems(student.modality)}</td>
-      <td><select data-role="delivered"><option value="nao">Não entregue</option><option value="sim">Entregue</option></select></td>
+      <td data-role="items"></td>
       <td><input data-role="notes" type="text" placeholder="Obs" /></td>
       <td><button data-role="save" class="small-btn" type="button">Salvar</button></td>
       <td><button data-role="delete" class="ghost" type="button" ${canDelete ? "" : "disabled"}>Excluir</button></td>
     `;
-    const delivered = row.querySelector('[data-role="delivered"]');
+
+    const itemsCell = row.querySelector('[data-role="items"]');
+    const itemControls = renderItemDeliveryControls(itemsCell, student);
     const notes = row.querySelector('[data-role="notes"]');
-    delivered.value = student.uniform.delivered ? "sim" : "nao";
     notes.value = student.uniform.notes || "";
+
     row.querySelector('[data-role="save"]').addEventListener("click", () => {
-      applyUniformUpdate(student, delivered.value === "sim", notes.value.trim(), user);
+      const nextItems = { ...(student.uniform.items || createEmptyDeliveryItems()) };
+      itemControls.forEach(({ itemKey, select }) => {
+        nextItems[itemKey] = select.value === "sim";
+      });
+      applyUniformUpdate(student, nextItems, notes.value.trim(), user);
     });
+
     row.querySelector('[data-role="delete"]').addEventListener("click", () => {
       if (!canDelete) return;
       state.students = state.students.filter((item) => item.id !== student.id);
@@ -723,18 +808,33 @@ function renderManagementUniform(user = currentUser()) {
     ui.uniformTableBody.appendChild(row);
   });
 }
-function applyUniformUpdate(student, delivered, notes, user) {
-  const wasDelivered = student.uniform.delivered;
-  student.uniform.delivered = delivered;
-  student.uniform.notes = notes;
-  if (!wasDelivered && delivered) {
-    const stock = getProjectStock();
-    const allowedItems = getAllowedItemsByModality(student.modality);
-    allowedItems.forEach((itemKey) => {
+function applyUniformUpdate(student, nextItems, notes, user) {
+  const stock = getProjectStock();
+  const allowedItems = getAllowedItemsByModality(student.modality);
+  const previousItems = student.uniform.items || createEmptyDeliveryItems();
+  const normalizedNextItems = { ...previousItems, ...nextItems };
+
+  for (const itemKey of allowedItems) {
+    const wasDelivered = previousItems[itemKey] === true;
+    const willDeliver = normalizedNextItems[itemKey] === true;
+
+    if (!wasDelivered && willDeliver) {
+      if ((stock[itemKey] || 0) <= 0) {
+        normalizedNextItems[itemKey] = false;
+        continue;
+      }
       stock[itemKey] = Math.max(0, (stock[itemKey] || 0) - 1);
-    });
+    }
+
+    if (wasDelivered && !willDeliver) {
+      stock[itemKey] = (stock[itemKey] || 0) + 1;
+    }
   }
-  pushHistory(student, user, "uniforme", `Kit ${delivered ? "entregue" : "pendente"} (${student.modality || "sem modalidade"})`);
+
+  student.uniform.items = normalizedNextItems;
+  student.uniform.notes = notes;
+
+  pushHistory(student, user, "uniforme", `Kit ${isKitDelivered(student) ? "entregue" : "parcial/pendente"} (${student.modality || "sem modalidade"})`);
   persist();
   render();
 }
@@ -816,10 +916,10 @@ function onAdjustStock(event) {
   event.preventDefault();
   const user = currentUser();
   if (!user || user.role !== "admin") return;
-  const size = document.getElementById("stockSize").value;
+  const itemKey = document.getElementById("stockSize").value;
   const delta = Number(document.getElementById("stockDelta").value || 0);
   const stock = getProjectStock();
-  stock[size] = Math.max(0, (stock[size] || 0) + delta);
+  stock[itemKey] = Math.max(0, (stock[itemKey] || 0) + delta);
   persist();
   render();
 }
@@ -887,14 +987,14 @@ function buildReport(period) {
     lines.push(`TURMA/NÚCLEO: ${nucleus}`);
     lines.push(`Horários da turma: ${formatSchedules(nucleusData.schedules)}`);
     lines.push(`Dias com aula no período: ${days.length ? days.map(formatDateLabel).join(", ") : "nenhum"}`);
-    lines.push(`Resumo da turma: ${students.length} alunos | ${students.filter((s) => s.attendance === "presente").length} presentes | ${students.filter((s) => s.attendance === "falta").length} faltas | ${students.filter((s) => s.uniform.delivered).length} kits entregues`);
+    lines.push(`Resumo da turma: ${students.length} alunos | ${students.filter((s) => s.attendance === "presente").length} presentes | ${students.filter((s) => s.attendance === "falta").length} faltas | ${students.filter((s) => isKitDelivered(s)).length} kits entregues`);
     lines.push("Alunos:");
     if (!students.length) {
       lines.push("- Nenhum aluno cadastrado nesta turma.");
     } else {
       students.forEach((student) => {
         const attendanceDate = generatedAt.toLocaleDateString("pt-BR");
-        lines.push(`- Nome completo: ${student.name} | Data do relatório: ${attendanceDate} | Horário matriculado: ${student.classSchedule || "não informado"} | Modalidade: ${student.modality || "não informada"} | Itens do kit: ${formatAllowedItems(student.modality)} | Presença: ${student.attendance} | Kit: ${student.uniform.delivered ? "Entregue" : "Pendente"}`);
+        lines.push(`- Nome completo: ${student.name} | Data do relatório: ${attendanceDate} | Horário matriculado: ${student.classSchedule || "não informado"} | Modalidade: ${student.modality || "não informada"} | Itens do kit: ${formatAllowedItems(student.modality)} | Presença: ${student.attendance} | Kit: ${isKitDelivered(student) ? "Entregue" : "Parcial/Pendente"}`);
       });
     }
     lines.push("");
