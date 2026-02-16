@@ -1,7 +1,13 @@
 const STORAGE_KEY = "iin-system-v5";
 const SESSION_KEY = "iin-session-v5";
 const NUCLEI = ["Campo Grande", "Freguesia", "Jacarezinho", "Penha", "Realengo", "Santa Cruz", "Macaé"];
-const SIZES = ["PP", "P", "M", "G", "GG"];
+const STOCK_CATEGORIES = [
+  { key: "camiseta", label: "Camiseta" },
+  { key: "shorts", label: "Shorts" },
+  { key: "kimono", label: "Kimono" },
+  { key: "bandagem", label: "Bandagem" },
+  { key: "protetor_bucal", label: "Protetor bucal" },
+];
 const PROJECT_NUCLEI = {
   light: ["Campo Grande", "Jacarezinho", "Penha", "Santa Cruz"],
   enel: ["Macaé"],
@@ -12,6 +18,16 @@ const PROJECTS = [
   { key: "enel", label: "Enel", processNumber: "A definir" },
   { key: "supergasbras", label: "Supergasbras", processNumber: "A definir" },
 ];
+const PROJECT_MODALITIES = {
+  light: ["Boxe", "Muay Thai", "Jiu Jitso"],
+  enel: ["Jiu Jitso", "Muay Thai"],
+  supergasbras: ["Boxe", "Jiu Jitso"],
+};
+const MODALITY_ITEMS = {
+  "Jiu Jitso": ["camiseta", "kimono"],
+  Boxe: ["camiseta", "shorts", "bandagem", "protetor_bucal"],
+  "Muay Thai": ["camiseta", "shorts", "bandagem", "protetor_bucal"],
+};
 const state = {
   students: [],
   users: [],
@@ -46,6 +62,7 @@ const ui = {
   uniformDelivered: document.getElementById("uniformDelivered"),
   studentForm: document.getElementById("studentForm"),
   studentSchedule: document.getElementById("studentSchedule"),
+  studentModality: document.getElementById("studentModality"),
   classCalendarForm: document.getElementById("classCalendarForm"),
   classCalendarBoard: document.getElementById("classCalendarBoard"),
   calendarStartTimes: Array.from({ length: 6 }, (_, index) => document.getElementById(`calendarStartTime${index + 1}`)),
@@ -73,6 +90,7 @@ function init() {
   hydrateNucleusSelects();
   hydrateProjectSelects();
   hydrateStudentScheduleOptions();
+  hydrateStudentModalityOptions();
   bindEvents();
   render();
 }
@@ -127,6 +145,32 @@ function hydrateStudentScheduleOptions() {
 }
 
 
+function hydrateStudentModalityOptions() {
+  if (!ui.studentModality) return;
+
+  const modalities = PROJECT_MODALITIES[state.currentProjectKey] || [];
+  ui.studentModality.innerHTML = "";
+  modalities.forEach((modality) => {
+    const option = document.createElement("option");
+    option.value = modality;
+    option.textContent = modality;
+    ui.studentModality.appendChild(option);
+  });
+}
+
+function getAllowedItemsByModality(modality) {
+  return MODALITY_ITEMS[modality] || [];
+}
+
+function labelStockCategory(categoryKey) {
+  return STOCK_CATEGORIES.find((item) => item.key === categoryKey)?.label || categoryKey;
+}
+
+function formatAllowedItems(modality) {
+  const items = getAllowedItemsByModality(modality);
+  return items.length ? items.map(labelStockCategory).join(", ") : "Sem itens configurados";
+}
+
 function hydrateProjectSelects() {
   if (!ui.loginProject) return;
 
@@ -158,7 +202,7 @@ function getProjectCalendar(projectKey = state.currentProjectKey) {
 
 function getProjectStock(projectKey = state.currentProjectKey) {
   if (!state.uniformStockByProject[projectKey]) {
-    state.uniformStockByProject[projectKey] = { PP: 20, P: 20, M: 20, G: 20, GG: 20 };
+    state.uniformStockByProject[projectKey] = createDefaultCategoryStock();
   }
   return state.uniformStockByProject[projectKey];
 }
@@ -198,6 +242,7 @@ function bindEvents() {
     state.currentProjectKey = event.target.value;
     hydrateNucleusSelects();
     hydrateStudentScheduleOptions();
+  hydrateStudentModalityOptions();
     render();
   });
 
@@ -237,7 +282,8 @@ function createDefaultStudents() {
       nucleus: "Campo Grande",
       contact: "Responsável: Carlos",
       attendance: "presente",
-      uniform: { size: "M", delivered: true, notes: "Entregue" },
+      modality: "Boxe",
+      uniform: { delivered: true, notes: "Entregue" },
       classSchedule: "",
       project: PROJECTS[0].key,
     },
@@ -247,14 +293,19 @@ function createDefaultStudents() {
       nucleus: "Realengo",
       contact: "Responsável: Marta",
       attendance: "falta",
-      uniform: { size: "G", delivered: false, notes: "Aguardando" },
+      modality: "Jiu Jitso",
+      uniform: { delivered: false, notes: "Aguardando" },
       classSchedule: "",
       project: PROJECTS[0].key,
     },
   ];
 }
+function createDefaultCategoryStock() {
+  return Object.fromEntries(STOCK_CATEGORIES.map((item) => [item.key, 20]));
+}
+
 function createUniformStockByProject() {
-  return Object.fromEntries(PROJECTS.map((project) => [project.key, { PP: 20, P: 20, M: 20, G: 20, GG: 20 }]));
+  return Object.fromEntries(PROJECTS.map((project) => [project.key, createDefaultCategoryStock()]));
 }
 
 function createProjectCalendars() {
@@ -316,11 +367,11 @@ function loadData() {
 
     if (parsed.uniformStockByProject) {
       state.uniformStockByProject = Object.fromEntries(
-        projectKeys.map((key) => [key, { PP: 20, P: 20, M: 20, G: 20, GG: 20, ...(parsed.uniformStockByProject[key] || {}) }]),
+        projectKeys.map((key) => [key, { ...createDefaultCategoryStock(), ...(parsed.uniformStockByProject[key] || {}) }]),
       );
     } else {
-      const fallbackStock = parsed.uniformStock || { PP: 20, P: 20, M: 20, G: 20, GG: 20 };
-      state.uniformStockByProject = Object.fromEntries(projectKeys.map((key) => [key, { ...fallbackStock }]));
+      const fallbackStock = parsed.uniformStock || createDefaultCategoryStock();
+      state.uniformStockByProject = Object.fromEntries(projectKeys.map((key) => [key, { ...createDefaultCategoryStock(), ...fallbackStock }]));
     }
 
     if (parsed.classDaysByProject) {
@@ -336,6 +387,8 @@ function loadData() {
       ...student,
       project: student.project || PROJECTS[0].key,
       classSchedule: student.classSchedule || "",
+      modality: student.modality || (PROJECT_MODALITIES[student.project || PROJECTS[0].key]?.[0] || ""),
+      uniform: { delivered: Boolean(student.uniform?.delivered), notes: student.uniform?.notes || "" },
     }));
 
     state.history = (parsed.history || []).map((item) => ({
@@ -403,6 +456,8 @@ function onLogin(event) {
   hydrateProjectSelects();
   hydrateNucleusSelects();
   hydrateStudentScheduleOptions();
+  hydrateStudentModalityOptions();
+  hydrateStudentModalityOptions();
   ui.loginMessage.textContent = `Acesso liberado para ${labelRole(user.role)} • Projeto ${currentProject().label}.`;
   render();
 }
@@ -464,6 +519,7 @@ function onAddStudent(event) {
   const nucleus = document.getElementById("studentNucleus").value;
   if (!getVisibleNuclei().includes(nucleus)) return;
   const schedule = (ui.studentSchedule?.value || "").trim();
+  const modality = (ui.studentModality?.value || "").trim();
   const contact = document.getElementById("studentContact").value.trim();
   if (!name) return;
   state.students.unshift({
@@ -472,13 +528,15 @@ function onAddStudent(event) {
     nucleus,
     contact,
     attendance: "não registrado",
-    uniform: { size: "", delivered: false, notes: "" },
+    modality,
+    uniform: { delivered: false, notes: "" },
     classSchedule: schedule,
     project: state.currentProjectKey,
   });
   persist();
   ui.studentForm.reset();
   hydrateStudentScheduleOptions();
+  hydrateStudentModalityOptions();
   render();
 }
 function onAddClassDay(event) {
@@ -508,6 +566,7 @@ function onAddClassDay(event) {
   ui.classCalendarForm.reset();
   renderClassDays();
   hydrateStudentScheduleOptions();
+  hydrateStudentModalityOptions();
 }
 function renderBoard(target, students, actor) {
   target.innerHTML = "";
@@ -549,26 +608,25 @@ function renderBoard(target, students, actor) {
 function renderProfessorUniform(students, user) {
   ui.professorUniformBody.innerHTML = "";
   if (!students.length) {
-    ui.professorUniformBody.innerHTML = '<tr><td colspan="5" class="empty">Sem alunos na turma.</td></tr>';
+    ui.professorUniformBody.innerHTML = '<tr><td colspan="6" class="empty">Sem alunos na turma.</td></tr>';
     return;
   }
   students.forEach((student) => {
     const row = document.createElement("tr");
     row.innerHTML = `
       <td>${student.name}</td>
-      <td><select data-role="size">${SIZES.map((size) => `<option value="${size}">${size}</option>`).join("")}</select></td>
+      <td>${student.modality || "-"}</td>
+      <td>${formatAllowedItems(student.modality)}</td>
       <td><select data-role="delivered"><option value="nao">Não entregue</option><option value="sim">Entregue</option></select></td>
       <td><input data-role="notes" type="text" placeholder="Observação" /></td>
       <td><button data-role="save" class="small-btn" type="button">Salvar</button></td>
     `;
-    const size = row.querySelector('[data-role="size"]');
     const delivered = row.querySelector('[data-role="delivered"]');
     const notes = row.querySelector('[data-role="notes"]');
-    size.value = student.uniform.size || "P";
     delivered.value = student.uniform.delivered ? "sim" : "nao";
     notes.value = student.uniform.notes || "";
     row.querySelector('[data-role="save"]').addEventListener("click", () => {
-      applyUniformUpdate(student, size.value, delivered.value === "sim", notes.value.trim(), user);
+      applyUniformUpdate(student, delivered.value === "sim", notes.value.trim(), user);
     });
     ui.professorUniformBody.appendChild(row);
   });
@@ -634,7 +692,7 @@ function renderManagementUniform(user = currentUser()) {
   );
   ui.uniformTableBody.innerHTML = "";
   if (!students.length) {
-    ui.uniformTableBody.innerHTML = '<tr><td colspan="7" class="empty">Sem alunos para o filtro.</td></tr>';
+    ui.uniformTableBody.innerHTML = '<tr><td colspan="8" class="empty">Sem alunos para o filtro.</td></tr>';
     return;
   }
   students.forEach((student) => {
@@ -642,20 +700,19 @@ function renderManagementUniform(user = currentUser()) {
     row.innerHTML = `
       <td>${student.name}</td>
       <td>${student.nucleus}</td>
-      <td><select data-role="size">${SIZES.map((size) => `<option value="${size}">${size}</option>`).join("")}</select></td>
+      <td>${student.modality || "-"}</td>
+      <td>${formatAllowedItems(student.modality)}</td>
       <td><select data-role="delivered"><option value="nao">Não entregue</option><option value="sim">Entregue</option></select></td>
       <td><input data-role="notes" type="text" placeholder="Obs" /></td>
       <td><button data-role="save" class="small-btn" type="button">Salvar</button></td>
       <td><button data-role="delete" class="ghost" type="button" ${canDelete ? "" : "disabled"}>Excluir</button></td>
     `;
-    const size = row.querySelector('[data-role="size"]');
     const delivered = row.querySelector('[data-role="delivered"]');
     const notes = row.querySelector('[data-role="notes"]');
-    size.value = student.uniform.size || "P";
     delivered.value = student.uniform.delivered ? "sim" : "nao";
     notes.value = student.uniform.notes || "";
     row.querySelector('[data-role="save"]').addEventListener("click", () => {
-      applyUniformUpdate(student, size.value, delivered.value === "sim", notes.value.trim(), user);
+      applyUniformUpdate(student, delivered.value === "sim", notes.value.trim(), user);
     });
     row.querySelector('[data-role="delete"]').addEventListener("click", () => {
       if (!canDelete) return;
@@ -666,16 +723,18 @@ function renderManagementUniform(user = currentUser()) {
     ui.uniformTableBody.appendChild(row);
   });
 }
-function applyUniformUpdate(student, size, delivered, notes, user) {
+function applyUniformUpdate(student, delivered, notes, user) {
   const wasDelivered = student.uniform.delivered;
-  student.uniform.size = size;
   student.uniform.delivered = delivered;
   student.uniform.notes = notes;
   if (!wasDelivered && delivered) {
     const stock = getProjectStock();
-    stock[size] = Math.max(0, (stock[size] || 0) - 1);
+    const allowedItems = getAllowedItemsByModality(student.modality);
+    allowedItems.forEach((itemKey) => {
+      stock[itemKey] = Math.max(0, (stock[itemKey] || 0) - 1);
+    });
   }
-  pushHistory(student, user, "uniforme", `Uniforme ${delivered ? "entregue" : "pendente"} (${size})`);
+  pushHistory(student, user, "uniforme", `Kit ${delivered ? "entregue" : "pendente"} (${student.modality || "sem modalidade"})`);
   persist();
   render();
 }
@@ -694,10 +753,10 @@ function pushHistory(student, user, type, detail) {
 function renderStock() {
   ui.stockView.innerHTML = "";
   const stock = getProjectStock();
-  SIZES.forEach((size) => {
+  STOCK_CATEGORIES.forEach((item) => {
     const card = document.createElement("article");
     card.className = "stock-card";
-    card.innerHTML = `<h4>${size}</h4><p>${stock[size] || 0} unidades</p>`;
+    card.innerHTML = `<h4>${item.label}</h4><p>${stock[item.key] || 0} unidades</p>`;
     ui.stockView.appendChild(card);
   });
 }
@@ -828,14 +887,14 @@ function buildReport(period) {
     lines.push(`TURMA/NÚCLEO: ${nucleus}`);
     lines.push(`Horários da turma: ${formatSchedules(nucleusData.schedules)}`);
     lines.push(`Dias com aula no período: ${days.length ? days.map(formatDateLabel).join(", ") : "nenhum"}`);
-    lines.push(`Resumo da turma: ${students.length} alunos | ${students.filter((s) => s.attendance === "presente").length} presentes | ${students.filter((s) => s.attendance === "falta").length} faltas | ${students.filter((s) => s.uniform.delivered).length} uniformes entregues`);
+    lines.push(`Resumo da turma: ${students.length} alunos | ${students.filter((s) => s.attendance === "presente").length} presentes | ${students.filter((s) => s.attendance === "falta").length} faltas | ${students.filter((s) => s.uniform.delivered).length} kits entregues`);
     lines.push("Alunos:");
     if (!students.length) {
       lines.push("- Nenhum aluno cadastrado nesta turma.");
     } else {
       students.forEach((student) => {
         const attendanceDate = generatedAt.toLocaleDateString("pt-BR");
-        lines.push(`- Nome completo: ${student.name} | Data do relatório: ${attendanceDate} | Horário matriculado: ${student.classSchedule || "não informado"} | Presença: ${student.attendance} | Uniforme: ${student.uniform.delivered ? "Entregue" : "Pendente"} (${student.uniform.size || "Sem tamanho"})`);
+        lines.push(`- Nome completo: ${student.name} | Data do relatório: ${attendanceDate} | Horário matriculado: ${student.classSchedule || "não informado"} | Modalidade: ${student.modality || "não informada"} | Itens do kit: ${formatAllowedItems(student.modality)} | Presença: ${student.attendance} | Kit: ${student.uniform.delivered ? "Entregue" : "Pendente"}`);
       });
     }
     lines.push("");

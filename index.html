@@ -55,14 +55,15 @@
           <h3>Chamada da turma</h3>
           <div id="professorBoard" class="board-grid"></div>
 
-          <h3>Entrega de uniforme (própria turma)</h3>
+          <h3>Entrega de kit (própria turma)</h3>
           <div class="table-wrapper">
             <table>
               <thead>
                 <tr>
                   <th>Aluno</th>
-                  <th>Tamanho</th>
-                  <th>Status</th>
+                  <th>Modalidade</th>
+                  <th>Itens do kit</th>
+                  <th>Entrega</th>
                   <th>Obs.</th>
                   <th>Ação</th>
                 </tr>
@@ -80,7 +81,7 @@
             <article><h2 id="totalStudents">0</h2><p>Alunos cadastrados</p></article>
             <article><h2 id="presentCount">0</h2><p>Presentes</p></article>
             <article><h2 id="absentCount">0</h2><p>Faltas</p></article>
-            <article><h2 id="uniformDelivered">0</h2><p>Uniformes entregues</p></article>
+            <article><h2 id="uniformDelivered">0</h2><p>Kits entregues</p></article>
           </section>
 
           <section class="panel controls">
@@ -92,6 +93,9 @@
               </label>
               <label>Horário da turma
                 <select id="studentSchedule"></select>
+              </label>
+              <label>Modalidade
+                <select id="studentModality"></select>
               </label>
               <label>Contato <input id="studentContact" type="text" /></label>
               <button class="primary" type="submit">Adicionar aluno</button>
@@ -142,7 +146,7 @@
 
           <section class="panel">
             <div class="panel-title-row">
-              <h2>Distribuição de uniformes</h2>
+              <h2>Distribuição de kits</h2>
               <select id="uniformNucleusFilter"></select>
             </div>
             <div class="table-wrapper">
@@ -151,8 +155,9 @@
                   <tr>
                     <th>Aluno</th>
                     <th>Núcleo</th>
-                    <th>Tam.</th>
-                    <th>Status</th>
+                    <th>Modalidade</th>
+                    <th>Itens do kit</th>
+                    <th>Entrega</th>
                     <th>Obs.</th>
                     <th>Ação</th>
                     <th>Excluir</th>
@@ -222,11 +227,11 @@
           <form id="stockForm" class="grid-form">
             <label>Tamanho
               <select id="stockSize">
-                <option>PP</option>
-                <option>P</option>
-                <option>M</option>
-                <option>G</option>
-                <option>GG</option>
+                <option value="camiseta">Camiseta</option>
+                <option value="shorts">Shorts</option>
+                <option value="kimono">Kimono</option>
+                <option value="bandagem">Bandagem</option>
+                <option value="protetor_bucal">Protetor bucal</option>
               </select>
             </label>
             <label>Quantidade (+/-) <input id="stockDelta" type="number" value="0" /></label>
