@@ -347,6 +347,12 @@ th {
   padding: 0.62rem;
 }
 
+.report-status-success {
+  border-color: #96d5a8;
+  background: #e8f8ee;
+  color: #1f6b3b;
+}
+
 
 
 /* Calendário com horários (layout compacto e fluido) */

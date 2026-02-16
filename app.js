@@ -311,6 +311,7 @@ function bindEvents() {
     const period = ui.reportPeriod.value;
     const report = buildReport(period);
     downloadReport(report, period);
+    styleReportStatus(period);
     ui.reportStatus.textContent = `Relatório ${period} gerado em ${new Date().toLocaleString("pt-BR")}.`;
   });
   ui.userForm.addEventListener("submit", onCreateUser);
@@ -696,7 +697,6 @@ function renderProfessorArea(user) {
   const students = getProjectStudents().filter((student) => student.nucleus === user.nucleus);
   renderClassStaffPanel(user.nucleus, "professor");
   renderBoard(ui.professorBoard, students, user);
-  renderProfessorUniform(students, user);
   renderProfessorHistory(user.nucleus);
 }
 function renderManagementArea(user) {
@@ -909,6 +909,7 @@ function renderManagementAttendance(user = currentUser()) {
     const scheduleLabel = classStaff.classSchedule || "não definida";
     const professorLabel = classStaff.professorName || "não informado";
     const monitorLabel = classStaff.monitorName || "não informado";
+    const enrolled = students.length;
     const present = students.filter((s) => s.attendance === "presente").length;
     const absent = students.filter((s) => s.attendance === "falta").length;
     const justified = students.filter((s) => s.attendance === "justificado").length;
@@ -921,6 +922,7 @@ function renderManagementAttendance(user = currentUser()) {
       <p><strong>Turma/horário:</strong> ${scheduleLabel}</p>
       <p><strong>Professor:</strong> ${professorLabel}</p>
       <p><strong>Monitor:</strong> ${monitorLabel}</p>
+      <p><strong>Total de alunos matriculados na turma:</strong> ${enrolled}</p>
       <p><strong>Resumo:</strong> ${present} presentes • ${absent} faltas • ${justified} justificados</p>
       <div class="table-wrapper">
         <table>
@@ -1187,4 +1189,13 @@ function downloadReport(content, period) {
   anchor.click();
   anchor.remove();
   URL.revokeObjectURL(url);
+}
+
+function styleReportStatus(period) {
+  if (!ui.reportStatus) return;
+  if (period === "semanal") {
+    ui.reportStatus.classList.add("report-status-success");
+    return;
+  }
+  ui.reportStatus.classList.remove("report-status-success");
 }
