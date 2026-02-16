@@ -207,29 +207,31 @@ function renderItemDeliveryControls(container, student) {
 
   if (!allowedItems.length) {
     container.textContent = "Sem itens configurados";
-    return [];
+    return null;
   }
 
-  const controls = [];
+  const delivered = allowedItems.filter((itemKey) => student.uniform?.items?.[itemKey]);
+  const deliveredWrap = document.createElement("p");
+  deliveredWrap.className = "item-delivery-current";
+  deliveredWrap.textContent = delivered.length
+    ? `Recebido: ${delivered.map(labelStockCategory).join(", ")}`
+    : "Recebido: nenhum item";
+
+  const select = document.createElement("select");
+  select.className = "item-delivery-select";
+  select.innerHTML = '<option value="">Selecionar item entregue</option>';
+
   allowedItems.forEach((itemKey) => {
-    const wrap = document.createElement("div");
-    wrap.className = "item-delivery-control";
-
-    const label = document.createElement("label");
-    label.textContent = labelStockCategory(itemKey);
-
-    const select = document.createElement("select");
-    select.innerHTML = '<option value="nao">Pendente</option><option value="sim">Entregue</option>';
-    select.value = student.uniform?.items?.[itemKey] ? "sim" : "nao";
-
-    wrap.appendChild(label);
-    wrap.appendChild(select);
-    container.appendChild(wrap);
-
-    controls.push({ itemKey, select });
+    const option = document.createElement("option");
+    option.value = itemKey;
+    option.textContent = `${labelStockCategory(itemKey)}${student.uniform?.items?.[itemKey] ? " (já entregue)" : ""}`;
+    select.appendChild(option);
   });
 
-  return controls;
+  container.appendChild(deliveredWrap);
+  container.appendChild(select);
+
+  return { select };
 }
 
 function hydrateProjectSelects() {
@@ -679,7 +681,7 @@ function renderBoard(target, students, actor) {
 function renderProfessorUniform(students, user) {
   ui.professorUniformBody.innerHTML = "";
   if (!students.length) {
-    ui.professorUniformBody.innerHTML = '<tr><td colspan="6" class="empty">Sem alunos na turma.</td></tr>';
+    ui.professorUniformBody.innerHTML = '<tr><td colspan="5" class="empty">Sem alunos na turma.</td></tr>';
     return;
   }
   students.forEach((student) => {
@@ -689,21 +691,18 @@ function renderProfessorUniform(students, user) {
       <td>${student.modality || "-"}</td>
       <td>${formatAllowedItems(student.modality)}</td>
       <td data-role="items"></td>
-      <td><input data-role="notes" type="text" placeholder="Observação" /></td>
       <td><button data-role="save" class="small-btn" type="button">Salvar</button></td>
     `;
 
     const itemsCell = row.querySelector('[data-role="items"]');
     const itemControls = renderItemDeliveryControls(itemsCell, student);
-    const notes = row.querySelector('[data-role="notes"]');
-    notes.value = student.uniform.notes || "";
 
     row.querySelector('[data-role="save"]').addEventListener("click", () => {
       const nextItems = { ...(student.uniform.items || createEmptyDeliveryItems()) };
-      itemControls.forEach(({ itemKey, select }) => {
-        nextItems[itemKey] = select.value === "sim";
-      });
-      applyUniformUpdate(student, nextItems, notes.value.trim(), user);
+      if (itemControls?.select?.value) {
+        nextItems[itemControls.select.value] = true;
+      }
+      applyUniformUpdate(student, nextItems, user);
     });
 
     ui.professorUniformBody.appendChild(row);
@@ -770,7 +769,7 @@ function renderManagementUniform(user = currentUser()) {
   );
   ui.uniformTableBody.innerHTML = "";
   if (!students.length) {
-    ui.uniformTableBody.innerHTML = '<tr><td colspan="8" class="empty">Sem alunos para o filtro.</td></tr>';
+    ui.uniformTableBody.innerHTML = '<tr><td colspan="7" class="empty">Sem alunos para o filtro.</td></tr>';
     return;
   }
   students.forEach((student) => {
@@ -781,22 +780,19 @@ function renderManagementUniform(user = currentUser()) {
       <td>${student.modality || "-"}</td>
       <td>${formatAllowedItems(student.modality)}</td>
       <td data-role="items"></td>
-      <td><input data-role="notes" type="text" placeholder="Obs" /></td>
       <td><button data-role="save" class="small-btn" type="button">Salvar</button></td>
       <td><button data-role="delete" class="ghost" type="button" ${canDelete ? "" : "disabled"}>Excluir</button></td>
     `;
 
     const itemsCell = row.querySelector('[data-role="items"]');
     const itemControls = renderItemDeliveryControls(itemsCell, student);
-    const notes = row.querySelector('[data-role="notes"]');
-    notes.value = student.uniform.notes || "";
 
     row.querySelector('[data-role="save"]').addEventListener("click", () => {
       const nextItems = { ...(student.uniform.items || createEmptyDeliveryItems()) };
-      itemControls.forEach(({ itemKey, select }) => {
-        nextItems[itemKey] = select.value === "sim";
-      });
-      applyUniformUpdate(student, nextItems, notes.value.trim(), user);
+      if (itemControls?.select?.value) {
+        nextItems[itemControls.select.value] = true;
+      }
+      applyUniformUpdate(student, nextItems, user);
     });
 
     row.querySelector('[data-role="delete"]').addEventListener("click", () => {
@@ -808,7 +804,7 @@ function renderManagementUniform(user = currentUser()) {
     ui.uniformTableBody.appendChild(row);
   });
 }
-function applyUniformUpdate(student, nextItems, notes, user) {
+function applyUniformUpdate(student, nextItems, user) {
   const stock = getProjectStock();
   const allowedItems = getAllowedItemsByModality(student.modality);
   const previousItems = student.uniform.items || createEmptyDeliveryItems();
@@ -832,7 +828,6 @@ function applyUniformUpdate(student, nextItems, notes, user) {
   }
 
   student.uniform.items = normalizedNextItems;
-  student.uniform.notes = notes;
 
   pushHistory(student, user, "uniforme", `Kit ${isKitDelivered(student) ? "entregue" : "parcial/pendente"} (${student.modality || "sem modalidade"})`);
   persist();

@@ -253,6 +253,19 @@ td {
   font-size: 0.9rem;
 }
 
+.item-delivery-current {
+  margin: 0 0 0.35rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+}
+
+.item-delivery-select {
+  min-width: 170px;
+  max-width: 220px;
+  padding: 0.35rem 0.45rem;
+  font-size: 0.82rem;
+}
+
 th {
   color: #5e1620;
   background: #fdf5f7;
