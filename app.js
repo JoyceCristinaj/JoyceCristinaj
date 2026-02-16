@@ -2,13 +2,19 @@ const STORAGE_KEY = "iin-system-v5";
 const SESSION_KEY = "iin-session-v5";
 const NUCLEI = ["Campo Grande", "Freguesia", "Jacarezinho", "Penha", "Realengo", "Santa Cruz"];
 const SIZES = ["PP", "P", "M", "G", "GG"];
+const PROJECTS = [
+  { key: "light", label: "Light", processNumber: "A definir" },
+  { key: "enel", label: "Enel", processNumber: "A definir" },
+  { key: "supergasbras", label: "Supergasbras", processNumber: "A definir" },
+];
 const state = {
   students: [],
   users: [],
   history: [],
-  uniformStock: { PP: 20, P: 20, M: 20, G: 20, GG: 20 },
-  classDaysByNucleus: createEmptyCalendar(),
+  uniformStockByProject: createUniformStockByProject(),
+  classDaysByProject: createProjectCalendars(),
   sessionUserId: null,
+  currentProjectKey: PROJECTS[0].key,
   search: "",
   attendanceFilter: "todos",
   uniformFilter: "todos",
@@ -19,6 +25,7 @@ const ui = {
   loginForm: document.getElementById("loginForm"),
   loginUsername: document.getElementById("loginUsername"),
   loginPassword: document.getElementById("loginPassword"),
+  loginProject: document.getElementById("loginProject"),
   loginMessage: document.getElementById("loginMessage"),
   logoutBtn: document.getElementById("logoutBtn"),
   welcomeTitle: document.getElementById("welcomeTitle"),
@@ -59,6 +66,7 @@ function init() {
   loadData();
   loadSession();
   hydrateNucleusSelects();
+  hydrateProjectSelects();
   hydrateStudentScheduleOptions();
   bindEvents();
   render();
@@ -92,7 +100,8 @@ function hydrateStudentScheduleOptions() {
   if (!ui.studentSchedule) return;
 
   const nucleus = document.getElementById("studentNucleus")?.value;
-  const schedules = state.classDaysByNucleus[nucleus]?.schedules || [];
+  const projectCalendar = getProjectCalendar();
+  const schedules = projectCalendar[nucleus]?.schedules || [];
 
   ui.studentSchedule.innerHTML = '<option value="">Selecione (opcional)</option>';
   schedules.forEach((slot) => {
@@ -102,6 +111,43 @@ function hydrateStudentScheduleOptions() {
     option.textContent = value;
     ui.studentSchedule.appendChild(option);
   });
+}
+
+
+function hydrateProjectSelects() {
+  if (!ui.loginProject) return;
+
+  ui.loginProject.innerHTML = "";
+  PROJECTS.forEach((project) => {
+    const option = document.createElement("option");
+    option.value = project.key;
+    option.textContent = project.label;
+    ui.loginProject.appendChild(option);
+  });
+
+  ui.loginProject.value = state.currentProjectKey;
+}
+
+function currentProject() {
+  return PROJECTS.find((project) => project.key === state.currentProjectKey) || PROJECTS[0];
+}
+
+function getProjectCalendar(projectKey = state.currentProjectKey) {
+  if (!state.classDaysByProject[projectKey]) {
+    state.classDaysByProject[projectKey] = createEmptyCalendar();
+  }
+  return state.classDaysByProject[projectKey];
+}
+
+function getProjectStock(projectKey = state.currentProjectKey) {
+  if (!state.uniformStockByProject[projectKey]) {
+    state.uniformStockByProject[projectKey] = { PP: 20, P: 20, M: 20, G: 20, GG: 20 };
+  }
+  return state.uniformStockByProject[projectKey];
+}
+
+function getProjectStudents(projectKey = state.currentProjectKey) {
+  return state.students.filter((student) => student.project === projectKey);
 }
 
 function bindEvents() {
@@ -130,6 +176,11 @@ function bindEvents() {
   });
   ui.userForm.addEventListener("submit", onCreateUser);
   ui.stockForm.addEventListener("submit", onAdjustStock);
+  ui.loginProject.addEventListener("change", (event) => {
+    state.currentProjectKey = event.target.value;
+    hydrateStudentScheduleOptions();
+  });
+
   ui.newRole.addEventListener("change", () => {
     document.getElementById("newNucleus").disabled = ui.newRole.value !== "professor";
   });
@@ -168,6 +219,7 @@ function createDefaultStudents() {
       attendance: "presente",
       uniform: { size: "M", delivered: true, notes: "Entregue" },
       classSchedule: "",
+      project: PROJECTS[0].key,
     },
     {
       id: crypto.randomUUID(),
@@ -177,9 +229,18 @@ function createDefaultStudents() {
       attendance: "falta",
       uniform: { size: "G", delivered: false, notes: "Aguardando" },
       classSchedule: "",
+      project: PROJECTS[0].key,
     },
   ];
 }
+function createUniformStockByProject() {
+  return Object.fromEntries(PROJECTS.map((project) => [project.key, { PP: 20, P: 20, M: 20, G: 20, GG: 20 }]));
+}
+
+function createProjectCalendars() {
+  return Object.fromEntries(PROJECTS.map((project) => [project.key, createEmptyCalendar()]));
+}
+
 function createEmptyCalendar() {
   return Object.fromEntries(
     NUCLEI.map((nucleus) => [
@@ -223,7 +284,7 @@ function loadData() {
     state.users = createDefaultUsers();
     ensureRequiredUsers();
     state.students = createDefaultStudents();
-    state.classDaysByNucleus = createEmptyCalendar();
+    state.classDaysByProject = createProjectCalendars();
     persist();
     return;
   }
@@ -231,15 +292,40 @@ function loadData() {
     const parsed = JSON.parse(saved);
     state.users = parsed.users || createDefaultUsers();
     ensureRequiredUsers();
-    state.students = parsed.students || createDefaultStudents();
-    state.history = parsed.history || [];
-    state.uniformStock = parsed.uniformStock || state.uniformStock;
-    state.classDaysByNucleus = normalizeCalendar(parsed.classDaysByNucleus);
-  } catch {
+    const projectKeys = PROJECTS.map((project) => project.key);
+
+    if (parsed.uniformStockByProject) {
+      state.uniformStockByProject = Object.fromEntries(
+        projectKeys.map((key) => [key, { PP: 20, P: 20, M: 20, G: 20, GG: 20, ...(parsed.uniformStockByProject[key] || {}) }]),
+      );
+    } else {
+      const fallbackStock = parsed.uniformStock || { PP: 20, P: 20, M: 20, G: 20, GG: 20 };
+      state.uniformStockByProject = Object.fromEntries(projectKeys.map((key) => [key, { ...fallbackStock }]));
+    }
+
+    if (parsed.classDaysByProject) {
+      state.classDaysByProject = Object.fromEntries(
+        projectKeys.map((key) => [key, normalizeCalendar(parsed.classDaysByProject[key])]),
+      );
+    } else {
+      state.classDaysByProject = createProjectCalendars();
+      state.classDaysByProject[PROJECTS[0].key] = normalizeCalendar(parsed.classDaysByNucleus);
+    }
+
+    state.students = (parsed.students || createDefaultStudents()).map((student) => ({
+      ...student,
+      project: student.project || PROJECTS[0].key,
+      classSchedule: student.classSchedule || "",
+    }));
+
+    state.history = (parsed.history || []).map((item) => ({
+      ...item,
+      project: item.project || PROJECTS[0].key,
+    }));  } catch {
     state.users = createDefaultUsers();
     ensureRequiredUsers();
     state.students = createDefaultStudents();
-    state.classDaysByNucleus = createEmptyCalendar();
+    state.classDaysByProject = createProjectCalendars();
   }
 }
 function persist() {
@@ -249,17 +335,30 @@ function persist() {
       users: state.users,
       students: state.students,
       history: state.history,
-      uniformStock: state.uniformStock,
-      classDaysByNucleus: state.classDaysByNucleus,
+      uniformStockByProject: state.uniformStockByProject,
+      classDaysByProject: state.classDaysByProject,
     }),
   );
 }
 function loadSession() {
-  state.sessionUserId = localStorage.getItem(SESSION_KEY);
+  const raw = localStorage.getItem(SESSION_KEY);
+  if (!raw) return;
+
+  try {
+    const parsed = JSON.parse(raw);
+    state.sessionUserId = parsed.userId || null;
+    state.currentProjectKey = parsed.projectKey || PROJECTS[0].key;
+  } catch {
+    state.sessionUserId = raw;
+    state.currentProjectKey = PROJECTS[0].key;
+  }
 }
 function saveSession() {
   if (state.sessionUserId) {
-    localStorage.setItem(SESSION_KEY, state.sessionUserId);
+    localStorage.setItem(
+      SESSION_KEY,
+      JSON.stringify({ userId: state.sessionUserId, projectKey: state.currentProjectKey }),
+    );
   } else {
     localStorage.removeItem(SESSION_KEY);
   }
@@ -271,15 +370,18 @@ function onLogin(event) {
   event.preventDefault();
   const username = ui.loginUsername.value.trim();
   const password = ui.loginPassword.value.trim();
+  const selectedProjectKey = ui.loginProject.value;
   const user = state.users.find((item) => item.username === username && item.password === password);
   if (!user) {
     ui.loginMessage.textContent = "Usuário ou senha inválidos.";
     return;
   }
   state.sessionUserId = user.id;
+  state.currentProjectKey = selectedProjectKey;
   saveSession();
   ui.loginForm.reset();
-  ui.loginMessage.textContent = `Acesso liberado para ${labelRole(user.role)}.`;
+  hydrateProjectSelects();
+  ui.loginMessage.textContent = `Acesso liberado para ${labelRole(user.role)} • Projeto ${currentProject().label}.`;
   render();
 }
 function onLogout() {
@@ -304,7 +406,7 @@ function render() {
   const isProfessor = user.role === "professor";
   const isGestao = user.role === "gestao";
   const isAdmin = user.role === "admin";
-  ui.welcomeTitle.textContent = `Painel • ${labelRole(user.role)}`;
+  ui.welcomeTitle.textContent = `Painel • ${labelRole(user.role)} • ${currentProject().label}`;
   ui.professorArea.classList.toggle("hidden", !isProfessor);
   ui.managementArea.classList.toggle("hidden", !(isGestao || isAdmin));
   ui.adminArea.classList.toggle("hidden", !isAdmin);
@@ -320,7 +422,7 @@ function render() {
 }
 function renderProfessorArea(user) {
   ui.professorNucleusBadge.textContent = `Turma: ${user.nucleus}`;
-  const students = state.students.filter((student) => student.nucleus === user.nucleus);
+  const students = getProjectStudents().filter((student) => student.nucleus === user.nucleus);
   renderBoard(ui.professorBoard, students, user);
   renderProfessorUniform(students, user);
   renderProfessorHistory(user.nucleus);
@@ -349,6 +451,7 @@ function onAddStudent(event) {
     attendance: "não registrado",
     uniform: { size: "", delivered: false, notes: "" },
     classSchedule: schedule,
+    project: state.currentProjectKey,
   });
   persist();
   ui.studentForm.reset();
@@ -363,8 +466,9 @@ function onAddClassDay(event) {
   const date = document.getElementById("calendarDate").value;
   const schedules = getSchedulesFromForm();
   if (!nucleus) return;
-  const nucleusData = state.classDaysByNucleus[nucleus] || { days: [], schedules: [] };
-  state.classDaysByNucleus[nucleus] = nucleusData;
+  const projectCalendar = getProjectCalendar();
+  const nucleusData = projectCalendar[nucleus] || { days: [], schedules: [] };
+  projectCalendar[nucleus] = nucleusData;
   let changed = false;
   if (date && !nucleusData.days.includes(date)) {
     nucleusData.days.push(date);
@@ -447,7 +551,7 @@ function renderProfessorUniform(students, user) {
 }
 function renderProfessorHistory(nucleus) {
   ui.professorHistory.innerHTML = "";
-  const entries = state.history.filter((item) => item.nucleus === nucleus).slice(0, 30);
+  const entries = state.history.filter((item) => item.project === state.currentProjectKey && item.nucleus === nucleus).slice(0, 30);
   if (!entries.length) {
     ui.professorHistory.innerHTML = '<li class="empty">Sem histórico da turma.</li>';
     return;
@@ -459,15 +563,17 @@ function renderProfessorHistory(nucleus) {
   });
 }
 function renderMetrics() {
-  ui.totalStudents.textContent = state.students.length;
-  ui.presentCount.textContent = state.students.filter((student) => student.attendance === "presente").length;
-  ui.absentCount.textContent = state.students.filter((student) => student.attendance === "falta").length;
-  ui.uniformDelivered.textContent = state.students.filter((student) => student.uniform.delivered).length;
+  const students = getProjectStudents();
+  ui.totalStudents.textContent = students.length;
+  ui.presentCount.textContent = students.filter((student) => student.attendance === "presente").length;
+  ui.absentCount.textContent = students.filter((student) => student.attendance === "falta").length;
+  ui.uniformDelivered.textContent = students.filter((student) => student.uniform.delivered).length;
 }
 function renderClassDays() {
   ui.classCalendarBoard.innerHTML = "";
+  const projectCalendar = getProjectCalendar();
   NUCLEI.forEach((nucleus) => {
-    const nucleusData = state.classDaysByNucleus[nucleus] || { days: [], schedules: [] };
+    const nucleusData = projectCalendar[nucleus] || { days: [], schedules: [] };
     const days = nucleusData.days || [];
     const card = document.createElement("article");
     card.className = "calendar-card";
@@ -489,7 +595,7 @@ function renderClassDays() {
   });
 }
 function renderManagementAttendance(user = currentUser()) {
-  const filtered = state.students.filter((student) => {
+  const filtered = getProjectStudents().filter((student) => {
     const byName = student.name.toLowerCase().includes(state.search);
     const byNucleus = state.attendanceFilter === "todos" || student.nucleus === state.attendanceFilter;
     return byName && byNucleus;
@@ -499,7 +605,7 @@ function renderManagementAttendance(user = currentUser()) {
 function renderManagementUniform(user = currentUser()) {
   if (!user) return;
   const canDelete = user.role === "admin";
-  const students = state.students.filter(
+  const students = getProjectStudents().filter(
     (student) => state.uniformFilter === "todos" || student.nucleus === state.uniformFilter,
   );
   ui.uniformTableBody.innerHTML = "";
@@ -542,7 +648,8 @@ function applyUniformUpdate(student, size, delivered, notes, user) {
   student.uniform.delivered = delivered;
   student.uniform.notes = notes;
   if (!wasDelivered && delivered) {
-    state.uniformStock[size] = Math.max(0, (state.uniformStock[size] || 0) - 1);
+    const stock = getProjectStock();
+    stock[size] = Math.max(0, (stock[size] || 0) - 1);
   }
   pushHistory(student, user, "uniforme", `Uniforme ${delivered ? "entregue" : "pendente"} (${size})`);
   persist();
@@ -557,14 +664,16 @@ function pushHistory(student, user, type, detail) {
     by: user.username,
     type,
     detail,
+    project: state.currentProjectKey,
   });
 }
 function renderStock() {
   ui.stockView.innerHTML = "";
+  const stock = getProjectStock();
   SIZES.forEach((size) => {
     const card = document.createElement("article");
     card.className = "stock-card";
-    card.innerHTML = `<h4>${size}</h4><p>${state.uniformStock[size] || 0} unidades</p>`;
+    card.innerHTML = `<h4>${size}</h4><p>${stock[size] || 0} unidades</p>`;
     ui.stockView.appendChild(card);
   });
 }
@@ -626,7 +735,8 @@ function onAdjustStock(event) {
   if (!user || user.role !== "admin") return;
   const size = document.getElementById("stockSize").value;
   const delta = Number(document.getElementById("stockDelta").value || 0);
-  state.uniformStock[size] = Math.max(0, (state.uniformStock[size] || 0) + delta);
+  const stock = getProjectStock();
+  stock[size] = Math.max(0, (stock[size] || 0) + delta);
   persist();
   render();
 }
@@ -674,18 +784,22 @@ function buildReport(period) {
   const startIso = toIsoDate(start);
   const endIso = toIsoDate(end);
   const generatedAt = new Date();
+  const project = currentProject();
   const lines = [
     "INSTITUTO IRMÃOS NOGUEIRA",
+    `PROJETO: ${project.label.toUpperCase()}`,
+    `PROCESSO: ${project.processNumber || "A definir"}`,
     `RELATÓRIO ${label.toUpperCase()}`,
     `Gerado em: ${generatedAt.toLocaleString("pt-BR")}`,
     `Período: ${start.toLocaleDateString("pt-BR")} até ${end.toLocaleDateString("pt-BR")}`,
     "",
   ];
   NUCLEI.forEach((nucleus) => {
-    const students = state.students
+    const students = getProjectStudents()
       .filter((student) => student.nucleus === nucleus)
       .sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
-    const nucleusData = state.classDaysByNucleus[nucleus] || { days: [], schedules: [] };
+    const projectCalendar = getProjectCalendar();
+    const nucleusData = projectCalendar[nucleus] || { days: [], schedules: [] };
     const days = (nucleusData.days || []).filter((day) => day >= startIso && day <= endIso);
     lines.push(`TURMA/NÚCLEO: ${nucleus}`);
     lines.push(`Horários da turma: ${formatSchedules(nucleusData.schedules)}`);
@@ -709,7 +823,7 @@ function downloadReport(content, period) {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `relatorio-${period}-${toIsoDate(new Date())}.txt`;
+  anchor.download = `relatorio-${state.currentProjectKey}-${period}-${toIsoDate(new Date())}.txt`;
   document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
